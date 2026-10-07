@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown, LogOut, Repeat } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain } from "wagmi";
-import { type Status, USDC, chain, short, usd, usdcAbi } from "@/lib/escrow";
+import { type Status, USDC, chain, errorText, short, usd, usdcAbi } from "@/lib/escrow";
 
 export const btn =
   "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-red hover:text-red-ink disabled:pointer-events-none disabled:opacity-40";
@@ -22,8 +22,13 @@ const subscribeClock = (cb: () => void) => {
 export const useNow = () =>
   useSyncExternalStore(subscribeClock, () => Math.floor(Date.now() / 30_000) * 30, () => 0);
 
+type Provider = { request(a: { method: string; params?: unknown[] }): Promise<unknown> };
+// Asking for eth_accounts permission makes MetaMask show its account picker.
+const perms = [{ eth_accounts: {} }];
+
 /** Connect → switch network → show address + USDC balance. */
 export function Wallet() {
+  const [error, setError] = useState("");
   const { address, chainId, isConnected, connector } = useConnection();
   const connectors = useConnectors();
   const connect = useConnect();
@@ -37,15 +42,40 @@ export function Wallet() {
     query: { enabled: !!address, refetchInterval: 10_000 },
   });
 
+  // EIP-6963 wallets announce themselves by name; prefer those over the generic window.ethereum,
+  // which another extension may have hijacked. MetaMask first.
+  const named = connectors.filter((c) => c.id !== "injected");
+  const choices = (named.length ? named : connectors).toSorted((a, b) => Number(b.id === "io.metamask") - Number(a.id === "io.metamask"));
+
   if (!isConnected)
     return (
-      <button
-        className={btn}
-        disabled={connect.isPending}
-        onClick={() => connectors[0] && connect.mutate({ connector: connectors[0] })}
-      >
-        {connect.isPending ? "Connecting…" : "Connect wallet"}
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-wrap justify-end gap-2">
+          {choices.map((c) => (
+            <button
+              key={c.uid}
+              className={btn}
+              disabled={connect.isPending}
+              onClick={async () => {
+                setError("");
+                try {
+                  // always show the wallet's account picker, even if this site was approved before
+                  const p = (await c.getProvider()) as Provider;
+                  await p.request({ method: "wallet_requestPermissions", params: perms });
+                } catch (e) {
+                  if ((e as { code?: number }).code === 4001) return; // user closed the picker
+                }
+                connect.mutate({ connector: c }, { onError: (e) => setError(errorText(e)) });
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- wallet icons are tiny data: URIs */}
+              {c.icon && <img src={c.icon} alt="" className="size-5" />}
+              {connect.isPending ? "Connecting…" : choices.length > 1 ? c.name : "Connect wallet"}
+            </button>
+          ))}
+        </div>
+        {error && <p className="text-xs text-red">{error}</p>}
+      </div>
     );
 
   if (chainId !== chain.id)
@@ -55,9 +85,7 @@ export function Wallet() {
       </button>
     );
 
-  // MetaMask remembers which accounts this site may use; these two calls open its account picker.
-  const wallet = async () => (await connector!.getProvider()) as { request(a: { method: string; params?: unknown[] }): Promise<unknown> };
-  const perms = [{ eth_accounts: {} }];
+  const wallet = async () => (await connector!.getProvider()) as Provider;
   const close = (e: React.MouseEvent) => e.currentTarget.closest("details")?.removeAttribute("open");
 
   return (
@@ -74,7 +102,10 @@ export function Wallet() {
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left hover:bg-paper"
           onClick={async (e) => {
             close(e);
-            await (await wallet()).request({ method: "wallet_requestPermissions", params: perms }).catch(() => {});
+            setError("");
+            await (await wallet())
+              .request({ method: "wallet_requestPermissions", params: perms })
+              .catch((err) => (err as { code?: number }).code !== 4001 && setError(errorText(err)));
           }}
         >
           <Repeat className="size-4" aria-hidden /> Switch account
@@ -90,7 +121,9 @@ export function Wallet() {
         >
           <LogOut className="size-4" aria-hidden /> Disconnect
         </button>
+        <p className="px-3 pt-1 text-[11px] text-muted">Using {connector?.name}</p>
       </div>
+      {error && <p className="absolute right-0 mt-1 text-xs text-red">{error}</p>}
     </details>
   );
 }
