@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown, LogOut, Repeat } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain } from "wagmi";
 import { type Status, USDC, chain, short, usd, usdcAbi } from "@/lib/escrow";
@@ -24,7 +24,7 @@ export const useNow = () =>
 
 /** Connect → switch network → show address + USDC balance. */
 export function Wallet() {
-  const { address, chainId, isConnected } = useConnection();
+  const { address, chainId, isConnected, connector } = useConnection();
   const connectors = useConnectors();
   const connect = useConnect();
   const disconnect = useDisconnect();
@@ -55,12 +55,43 @@ export function Wallet() {
       </button>
     );
 
+  // MetaMask remembers which accounts this site may use; these two calls open its account picker.
+  const wallet = async () => (await connector!.getProvider()) as { request(a: { method: string; params?: unknown[] }): Promise<unknown> };
+  const perms = [{ eth_accounts: {} }];
+  const close = (e: React.MouseEvent) => e.currentTarget.closest("details")?.removeAttribute("open");
+
   return (
-    <button className={btnGhost} onClick={() => disconnect.mutate()} title="Disconnect">
-      <span className="font-mono">{balance.data !== undefined ? usd(balance.data) : "…"} USDC</span>
-      <span className="h-4 w-px bg-line" />
-      <span className="font-mono text-muted">{short(address!)}</span>
-    </button>
+    <details className="group relative">
+      <summary className={`${btnGhost} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+        <span className="font-mono">{balance.data !== undefined ? usd(balance.data) : "…"} USDC</span>
+        <span className="h-4 w-px bg-line" />
+        <span className="font-mono text-muted">{short(address!)}</span>
+        <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-line bg-paper-2 p-2 text-sm shadow-xl">
+        <p className="break-all px-3 py-2 font-mono text-xs text-muted">{address}</p>
+        <button
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left hover:bg-paper"
+          onClick={async (e) => {
+            close(e);
+            await (await wallet()).request({ method: "wallet_requestPermissions", params: perms }).catch(() => {});
+          }}
+        >
+          <Repeat className="size-4" aria-hidden /> Switch account
+        </button>
+        <button
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-red hover:bg-paper"
+          onClick={async (e) => {
+            close(e);
+            // revoke so the next "Connect" asks which account to use instead of silently reusing this one
+            await (await wallet()).request({ method: "wallet_revokePermissions", params: perms }).catch(() => {});
+            disconnect.mutate();
+          }}
+        >
+          <LogOut className="size-4" aria-hidden /> Disconnect
+        </button>
+      </div>
+    </details>
   );
 }
 
