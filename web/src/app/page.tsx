@@ -61,7 +61,7 @@ export default function Home() {
             <a href="#how" className="link">How it works</a>
             <a href="#agent" className="link">AI agent</a>
             <a href="#use" className="link">Use cases</a>
-            <a href="#" className="link mt-1 inline-flex items-center gap-0.5 text-red">
+            <a href="/app" className="link mt-1 inline-flex items-center gap-0.5 text-red">
               Launch app <ArrowUpRight className="size-3" aria-hidden />
             </a>
           </nav>
@@ -214,7 +214,7 @@ export default function Home() {
             <span className="line"><span>Stop trusting.</span></span>
             <span className="line ml-[10%]"><span>Start escrowing.</span></span>
           </h2>
-          <a href="#" className="group flex shrink-0 items-center gap-4 self-start lg:self-auto">
+          <a href="/app/new" className="group flex shrink-0 items-center gap-4 self-start lg:self-auto">
             <span className="grid size-20 place-items-center rounded-full bg-ink text-paper transition-transform duration-300 group-hover:scale-110">
               <ArrowRight className="size-7 transition-transform duration-300 group-hover:-rotate-45" aria-hidden />
             </span>
@@ -265,7 +265,7 @@ function RedCard() {
         </div>
       </div>
 
-      <a href="#" className="pop group relative z-10 hidden items-center gap-3 sm:flex">
+      <a href="/app/new" className="pop group relative z-10 hidden items-center gap-3 sm:flex">
         <span className="grid size-11 place-items-center rounded-full bg-ink text-paper ring-4 ring-paper transition-transform duration-300 group-hover:scale-110">
           <Zap className="size-4" aria-hidden />
         </span>
