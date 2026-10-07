@@ -2,6 +2,7 @@ import "server-only";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { DEPLOY_BLOCK, ESCROW, STATUS, chain, escrowAbi } from "./escrow";
+import { groqChat } from "./groq";
 
 const MAX_EVIDENCE = 6_000; // chars of delivery content shown to the model
 
@@ -157,9 +158,6 @@ Reply with JSON only:
 {"verdict":"approve|partial|reject|unclear","freelancerPercent":0-100,"reason":"...","checks":[{"item":"short requirement","met":true}]}`;
 
 export async function askModel(input: { brief: string; deliverable: string; evidence: string; dispute?: string }): Promise<Verdict> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw new AgentError("GROQ_API_KEY is not set on the server.", 500);
-
   const user = [
     `<brief>${input.brief}</brief>`,
     `<delivery>${input.deliverable}</delivery>`,
@@ -167,22 +165,15 @@ export async function askModel(input: { brief: string; deliverable: string; evid
     input.dispute ? `<dispute>${input.dispute}</dispute>` : "",
   ].join("\n");
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(45_000),
-    body: JSON.stringify({
-      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: user },
-      ],
-    }),
+  const content = await groqChat(
+    [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: user },
+    ],
+    { model: process.env.GROQ_MODEL || "openai/gpt-oss-120b", json: true },
+  ).catch((e: Error) => {
+    throw new AgentError(e.message, 502);
   });
-  if (!res.ok) throw new AgentError(`AI model request failed (${res.status}): ${(await res.text()).slice(0, 200)}`, 502);
-  const content = (await res.json()).choices?.[0]?.message?.content ?? "";
   return parseVerdict(content);
 }
 
