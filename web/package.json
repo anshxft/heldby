@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:agent": "tsx --conditions=react-server --env-file=.env.local scripts/check-agent.mts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -15,6 +16,7 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "viem": "^2.57.3",
     "wagmi": "^3.7.7"
   },
@@ -26,6 +28,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

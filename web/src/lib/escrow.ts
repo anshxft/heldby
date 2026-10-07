@@ -13,6 +13,7 @@ export const escrowAbi = parseAbi([
   "function release(uint256 id)",
   "function refund(uint256 id)",
   "function dispute(uint256 id, string reason)",
+  "function resolve(uint256 id, uint16 freelancerBps, string reason)", // arbiter only (server agent)
   "function dealCount() view returns (uint256)",
   "function deals(uint256) view returns (address client, address freelancer, uint96 amount, uint40 deadline, uint8 status)",
   "event DealCreated(uint256 indexed id, address indexed client, address indexed freelancer, uint256 amount, uint256 deadline, string terms)",

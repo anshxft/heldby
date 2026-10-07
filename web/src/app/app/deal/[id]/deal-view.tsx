@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowUpRight, Check, Copy } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Bot, Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { Hash } from "viem";
 import { useConfig, useConnection } from "wagmi";
@@ -224,7 +224,8 @@ function Actions({ deal }: { deal: DealDetail }) {
       body = (
         <>
           {isClient && <button className={btn} disabled={!!busy} onClick={() => call("release")}>{label_("release", "Approve & release")}</button>}
-          {!isClient && <p>The client can release payment, or the AI agent will verify the work against the brief.</p>}
+          {!isClient && <p>The client can release payment, or the AI agent can verify the work against the brief.</p>}
+          <AgentButton id={id} />
           {(isClient || isFreelancer) && (
             <>
               <input className={`${field} border-red-ink/20 bg-paper`} placeholder="What’s wrong? (sent to the AI agent)" value={text} onChange={(e) => setText(e.target.value)} />
@@ -236,10 +237,11 @@ function Actions({ deal }: { deal: DealDetail }) {
       break;
 
     case "Disputed":
-      title = "AI agent is reviewing";
+      title = "Over to the AI agent";
       body = (
         <>
-          <p>Both sides’ evidence and the brief go to the agent. It will propose a fair split on-chain.</p>
+          <p>The agent reads the brief, the delivery and the dispute, then splits the funds on-chain.</p>
+          <AgentButton id={id} />
           {isClient && <button className={btnGhost} disabled={!!busy} onClick={() => call("release")}>{label_("release", "Settle: release in full")}</button>}
         </>
       );
@@ -276,5 +278,65 @@ function Actions({ deal }: { deal: DealDetail }) {
         </p>
       )}
     </aside>
+  );
+}
+
+type AgentReply = {
+  verdict: "approve" | "partial" | "reject" | "unclear";
+  freelancerPercent: number;
+  reason: string;
+  checks: { item: string; met: boolean }[];
+  tx?: Hash;
+  error?: string;
+};
+
+/** Asks the server-side agent to review this escrow; shows its reasoning, then refreshes the deal. */
+function AgentButton({ id }: { id: bigint }) {
+  const qc = useQueryClient();
+  const [state, setState] = useState<"idle" | "busy">("idle");
+  const [reply, setReply] = useState<AgentReply>();
+
+  async function ask() {
+    setState("busy");
+    setReply(undefined);
+    try {
+      const res = await fetch("/api/verify", { method: "POST", body: JSON.stringify({ id: id.toString() }) });
+      const data = (await res.json()) as AgentReply;
+      setReply(res.ok ? data : { ...data, verdict: "unclear", freelancerPercent: 0, reason: "", checks: [] });
+      if (data.tx) await qc.invalidateQueries();
+    } catch (e) {
+      setReply({ verdict: "unclear", freelancerPercent: 0, reason: "", checks: [], error: errorText(e) });
+    } finally {
+      setState("idle");
+    }
+  }
+
+  return (
+    <div className="grid gap-3 border-t border-red-ink/20 pt-3">
+      <button className={btn} disabled={state === "busy"} onClick={ask}>
+        <Bot className="size-4" aria-hidden />
+        {state === "busy" ? "Agent is reviewing…" : "Ask the AI agent to verify"}
+      </button>
+      {reply?.error && <p role="alert" className="font-medium">{reply.error}</p>}
+      {reply && !reply.error && (
+        <div className="grid gap-2 bg-paper p-4 text-ink">
+          <p className="flex items-baseline justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider">{reply.verdict === "unclear" ? "Needs a human" : `Verdict · ${reply.verdict}`}</span>
+            {reply.verdict !== "unclear" && <span className="font-mono text-sm">{reply.freelancerPercent}% to freelancer</span>}
+          </p>
+          <p>{reply.reason}</p>
+          {reply.checks.length > 0 && (
+            <ul className="grid gap-1 text-xs">
+              {reply.checks.map((c) => (
+                <li key={c.item} className="flex gap-2">
+                  <span className={c.met ? "" : "text-red"}>{c.met ? "✓" : "✗"}</span> {c.item}
+                </li>
+              ))}
+            </ul>
+          )}
+          {reply.tx && <p className="text-xs">Settled on-chain: <TxLink hash={reply.tx} /></p>}
+        </div>
+      )}
+    </div>
   );
 }
