@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #0d0d0d;
+  --color-paper: #e4e4e1;
+  --color-paper-2: #efefec;
+  --color-line: rgb(13 13 13 / 0.14);
+  --color-muted: #6b6b68;
+  --color-red: #ff3d2e;
+  --color-red-ink: #1a0503;
+  --font-sans: var(--font-inter-tight);
+  --font-mono: var(--font-plex-mono);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-ink);
+  font-family: var(--font-inter-tight), "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* giant tight display type */
+.display {
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 0.88;
+}
+
+/* masked line: inner span slides up from below */
+.line {
+  display: block;
+  overflow: clip;
+  padding-bottom: 0.06em;
+}
+.line > span {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.motion .reveal,
+  html.motion .line > span,
+  html.motion .red-card,
+  html.motion .pop {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-red);
+  outline-offset: 3px;
+}
+
+/* underline that grows on hover */
+.link {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size 0.3s ease;
+}
+.link:hover {
+  background-size: 100% 1px;
+}

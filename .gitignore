@@ -1,0 +1,12 @@
+# secrets — never commit keys
+.env
+.env.*
+!.env.example
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+
+# node / next (web has its own .gitignore too)
+node_modules/
