@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (history.at(-1)?.role !== "user") return Response.json({ error: "Last message must be from the user." }, { status: 400 });
 
   try {
-    // the small model drifts into Devanagari for Hinglish; a last-position reminder keeps the user's script
+    // the model can drift into Devanagari for Hinglish; a last-position reminder keeps the user's script
     const latin = !/[ऀ-ॿ]/.test(history.at(-1)!.content);
     const script: ChatMessage[] = latin
       ? [{ role: "system", content: "Write the reply only in English/Latin letters (Hinglish if they wrote Hinglish). No Devanagari." }]
