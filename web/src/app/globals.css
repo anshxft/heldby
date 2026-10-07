@@ -71,3 +71,27 @@ body {
 .link:hover {
   background-size: 100% 1px;
 }
+
+/* Pip's expression effects */
+@keyframes pip-tear {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(16px) scale(1); opacity: 0; }
+}
+@keyframes pip-float {
+  0% { transform: translate(0, 0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(6px, -14px); opacity: 0; }
+}
+@keyframes pip-beat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.pip-tear { animation: pip-tear 0.8s ease-in infinite; transform-box: fill-box; }
+.pip-tear-late { animation-delay: 0.4s; }
+.pip-float { animation: pip-float 2s ease-out infinite; transform-box: fill-box; }
+.pip-float-late { animation-delay: 1s; }
+.pip-beat { animation: pip-beat 0.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) {
+  .pip-tear, .pip-float, .pip-beat { animation: none; }
+}
