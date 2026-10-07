@@ -151,8 +151,10 @@ function useTx() {
       const r = await waitForTransactionReceipt(config, { hash: h });
       if (r.status !== "success") throw new Error("Transaction reverted on-chain.");
       await qc.invalidateQueries();
+      return true;
     } catch (e) {
       setError(errorText(e));
+      return false;
     } finally {
       setBusy(null);
     }
@@ -173,8 +175,12 @@ function Actions({ deal }: { deal: DealDetail }) {
   const id = deal.id;
   const call = (functionName: "release" | "refund") =>
     send(functionName, () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName, args: [id] }));
-  const submit = () => send("submit", () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName: "submitWork", args: [id, text.trim()] }));
-  const dispute = () => send("dispute", () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName: "dispute", args: [id, text.trim()] }));
+  // text input is shared by submit and dispute, so clear it once a tx lands
+  const withText = async (name: string, functionName: "submitWork" | "dispute") => {
+    if (await send(name, () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName, args: [id, text.trim()] }))) setText("");
+  };
+  const submit = () => withText("submit", "submitWork");
+  const dispute = () => withText("dispute", "dispute");
   const label_ = (name: string, idle: string) => (busy === name ? "Confirming…" : idle);
 
   let title = "";
