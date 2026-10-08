@@ -40,7 +40,7 @@ export const NETWORKS: Record<NetworkId, Network> = {
     label: "Testnet",
     testnet: true,
     chain: arcTestnet,
-    escrow: "0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8",
+    escrow: "0xB5a9223B73721b7835a1EFd571B5C01b23e834B3", // v2
     eurc: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
     kit: "Arc_Testnet",
     bridgeSources: [

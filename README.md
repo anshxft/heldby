@@ -21,7 +21,7 @@ The arbiter can only split a deal between its client and freelancer — it can n
 ## Repo
 | Path | What |
 |---|---|
-| `contracts/` | Foundry project: `TrustPayEscrow.sol`, 18 tests incl. a fuzz test that funds are always conserved |
+| `contracts/` | Foundry project: `TrustPayEscrow.sol`, 22 tests incl. a fuzz test that funds are always conserved |
 | `web/` | Next.js app: Swiss-style landing page, escrow app (wagmi/viem), AI agent API, Pip the mascot |
 | `web/src/lib/agent.ts` | The arbiter: fetches the delivery (GitHub PR files or page text), asks an open-source model, calls `resolve` |
 
@@ -30,10 +30,11 @@ as untrusted data; malformed or uncertain verdicts never move funds.
 
 ## Security
 - **Contract**: OpenZeppelin `SafeERC20` + `ReentrancyGuard`; the arbiter can only split a deal between its two parties;
-  late work can't block a refund. 18 Foundry tests incl. a fuzz test that funds are always conserved; Slither clean
-  apart from expected timestamp notes.
+  late work can't block a refund. 22 Foundry tests incl. a fuzz test that funds are always conserved; Slither clean
+  apart from expected timestamp notes. All deal data lives in contract state (`getDeal`, `dealsOf`), so the
+  app never depends on log scans.
 - **Review window**: after work is submitted the client has 24h to release or dispute; a dispute lets the agent act at
-  once, and after 24h of silence the freelancer can ask the agent. Enforced server-side.
+  once, and after 24h of silence the freelancer can ask the agent. Enforced in the contract.
 - **Agent**: delivery content is untrusted data (prompt-injection tested); malformed or uncertain verdicts never move
   funds; link fetching blocks private/local hosts on every redirect hop and caps downloads at 200 KB.
 - **APIs**: per-IP rate limits, cross-site requests refused, internal errors logged server-side only.
@@ -43,7 +44,7 @@ as untrusted data; malformed or uncertain verdicts never move funds.
 ## Deployments
 | Network | Escrow contract |
 |---|---|
-| Arc Testnet (5042002) | `0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8` |
+| Arc Testnet (5042002) | `0xB5a9223B73721b7835a1EFd571B5C01b23e834B3` |
 | Arc Mainnet (5042) | _coming soon_ |
 
 ## Run locally
