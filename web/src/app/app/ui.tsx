@@ -179,7 +179,7 @@ export function TxLink({ hash }: { hash: string }) {
 export function NotDeployed() {
   return (
     <div className="flex flex-col items-start gap-4 py-10">
-      <p className="max-w-md text-lg">TrustPay escrow isn’t live on Arc mainnet yet — it’s coming soon.</p>
+      <p className="max-w-md text-lg">Heldby escrow isn’t live on Arc mainnet yet — it’s coming soon.</p>
       <p className="max-w-md text-sm text-muted">Swap and bridge already work on mainnet from the Wallet page. Switch to Testnet to try escrows now.</p>
       <button className={btnGhost} onClick={() => setNetwork("testnet")}>
         Switch to Testnet
@@ -221,7 +221,7 @@ export function NetworkNote() {
   const net = useNetwork();
   return (
     <>
-      <span>TrustPay · {net.chain.name}</span>
+      <span>Heldby · {net.chain.name}</span>
       <span>{net.testnet ? "Test funds only" : "Real funds — mainnet"}</span>
     </>
   );

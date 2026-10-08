@@ -24,7 +24,7 @@ export type Network = {
   label: string;
   testnet: boolean;
   chain: Chain;
-  /** TrustPay escrow contract, or null until it's deployed on this network. */
+  /** Heldby escrow contract, or null until it's deployed on this network. */
   escrow: `0x${string}` | null;
   /** EURC ERC-20 on Arc (6 decimals). USDC is the same predeploy on both networks. */
   eurc: `0x${string}`;

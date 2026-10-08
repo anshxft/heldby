@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { MARK } from "@/components/logo";
 
-export const alt = "TrustPay — USDC escrow on Arc with an AI arbiter";
+export const alt = "Heldby — USDC escrow on Arc with an AI arbiter";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -16,7 +16,7 @@ export default function OpengraphImage() {
             <path d={MARK.right} fill="none" stroke="#0D0D0D" strokeWidth={MARK.stroke} strokeLinecap="round" />
             <rect x={MARK.funds.x} y={MARK.funds.y} width={MARK.funds.size} height={MARK.funds.size} fill="#FF3D2E" />
           </svg>
-          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>TrustPay</span>
+          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>Heldby</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", fontSize: 96, fontWeight: 700, lineHeight: 0.95, letterSpacing: -5 }}>
           <span>Money held in trust,</span>

@@ -9,7 +9,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 type Mood = "idle" | "glad" | "happy" | "shy" | "talk" | "surprised" | "dizzy" | "cry" | "angry" | "sad" | "love" | "sleepy";
 
 const SIZE = 76;
-const GREETING: Msg = { role: "assistant", content: "Hi, I’m Pip! Ask me anything about TrustPay — English ya Hinglish, dono chalega." };
+const GREETING: Msg = { role: "assistant", content: "Hi, I’m Pip! Ask me anything about Heldby — English ya Hinglish, dono chalega." };
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 // viewport without the scrollbar (innerWidth includes it)
 const vw = () => document.documentElement.clientWidth;
@@ -312,7 +312,7 @@ export function Pet() {
         )}
         <button
           onClick={toggle}
-          aria-label={open ? "Close chat with Pip" : "Chat with Pip, the TrustPay helper"}
+          aria-label={open ? "Close chat with Pip" : "Chat with Pip, the Heldby helper"}
           aria-expanded={open}
           className={`pointer-events-auto block size-full rounded-full transition-transform duration-200 hover:scale-105 ${held ? "cursor-grabbing" : "cursor-grab"}`}
         >
@@ -496,7 +496,7 @@ function Chat({ page, onClose, onThinking, onMood }: { page: string; onClose: ()
     >
       <header className="flex items-center justify-between border-b border-line px-5 py-4">
         <p className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-          <span className="size-2.5 rounded-full bg-red" aria-hidden /> Pip <span className="font-normal text-muted">· TrustPay helper</span>
+          <span className="size-2.5 rounded-full bg-red" aria-hidden /> Pip <span className="font-normal text-muted">· Heldby helper</span>
         </p>
         <button onClick={onClose} aria-label="Close chat" className="grid size-8 place-items-center rounded-full hover:bg-paper-2">
           <X className="size-4" aria-hidden />

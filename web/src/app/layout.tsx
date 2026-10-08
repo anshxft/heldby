@@ -19,7 +19,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "TrustPay — USDC Escrow on Arc", template: "%s · TrustPay" },
+  title: { default: "Heldby — USDC Escrow on Arc", template: "%s · Heldby" },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   alternates: { canonical: "/" },

@@ -39,7 +39,7 @@ function DealList() {
     return (
       <div className="border-t border-line py-10">
         <p className="text-2xl font-medium tracking-tight">No escrows yet.</p>
-        <p className="mt-2 text-muted">Create one, or ask a client to send you a TrustPay link.</p>
+        <p className="mt-2 text-muted">Create one, or ask a client to send you a Heldby link.</p>
       </div>
     );
 

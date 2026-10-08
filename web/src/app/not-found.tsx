@@ -10,7 +10,7 @@ export default function NotFound() {
     <main className="flex min-h-screen flex-col p-2 sm:p-3">
       <section className="flex flex-1 flex-col justify-between rounded-[22px] bg-paper px-5 py-6 sm:rounded-[28px] sm:px-8 sm:py-8">
         <Link href="/" className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-          <LogoMark className="size-5" /> TrustPay
+          <LogoMark className="size-5" /> Heldby
         </Link>
         <div>
           <p className="font-mono text-sm text-muted">Error 404</p>

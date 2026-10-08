@@ -5,13 +5,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title TrustPay escrow (v2)
+/// @title Heldby escrow (v2)
 /// @notice A client locks USDC for a freelancer. The client releases it, the AI arbiter
 ///         settles a submitted or disputed deal, or the client is refunded after the deadline.
 /// @dev The arbiter can only split a deal's funds between its client and freelancer —
 ///      it can never send them anywhere else. Everything the app shows is readable from
 ///      state (getDeal / dealsOf), so no log scanning is needed.
-contract TrustPayEscrow is ReentrancyGuard {
+contract HeldbyEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     enum Status {

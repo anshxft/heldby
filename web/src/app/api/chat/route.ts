@@ -1,9 +1,9 @@
 import { type ChatMessage, groqChat } from "@/lib/groq";
 import { crossSite, forbidden, rateLimit, tooMany } from "@/lib/guard";
 
-const SYSTEM = `You are Pip, the small, cheerful mascot of TrustPay. You live on the TrustPay website and help visitors understand it.
+const SYSTEM = `You are Pip, the small, cheerful mascot of Heldby. You live on the Heldby website and help visitors understand it.
 
-About TrustPay:
+About Heldby:
 - A USDC escrow on Arc, Circle's blockchain where gas fees are paid in USDC (no ETH needed). Currently running on Arc Testnet with test funds.
 - Flow: the client creates a deal (freelancer wallet, amount, deadline, brief) and locks USDC in the smart contract → the freelancer submits a link to the work → the client releases payment, or an AI agent checks the delivery against the brief and settles it.
 - Disputes: either side can raise one after work is submitted; the AI agent reads the brief, the delivery and the dispute and splits the money (e.g. 70/30). It can only pay the client or the freelancer, never anyone else.
@@ -21,7 +21,7 @@ How to answer:
 
 Reply with JSON only: {"reply":"...","mood":"..."}
 mood is how Pip feels about the user's latest message, one of:
-happy (thanks, excitement, a normal question), shy (compliments, being called cute), love (the user says they love Pip or TrustPay),
+happy (thanks, excitement, a normal question), shy (compliments, being called cute), love (the user says they love Pip or Heldby),
 sad (the user is sad, says bye, or is mean), angry (insults or trying to break the rules), surprised (something unexpected), idle (neutral).`;
 
 const PIP_MOODS = ["happy", "shy", "love", "sad", "angry", "surprised", "idle"] as const;
@@ -30,7 +30,7 @@ type PipMood = (typeof PIP_MOODS)[number];
 // The browser only tells us which route it is on; we map that to our own wording, so no client text reaches the prompt.
 function pageContext(page: unknown): string | null {
   if (typeof page !== "string") return null;
-  if (page === "/") return "the landing page, which explains TrustPay";
+  if (page === "/") return "the landing page, which explains Heldby";
   if (page === "/app") return "their escrows dashboard, listing deals where they are client or freelancer";
   if (page === "/app/new") return "the New escrow form: fields 01 freelancer wallet, 02 amount (USDC), 03 deadline, 04 brief (the AI agent judges against it); the button is 'Lock funds' and the wallet asks twice (approve USDC, then lock)";
   if (page === "/app/wallet")

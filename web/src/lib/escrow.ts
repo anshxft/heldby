@@ -1,7 +1,7 @@
 import { formatUnits, parseAbi } from "viem";
 
 // Network-specific values (chain, escrow address, deploy block) live in ./networks.ts.
-/** Mirrors TrustPayEscrow.REVIEW_WINDOW: after a submission the client has this long before the AI agent may settle. */
+/** Mirrors HeldbyEscrow.REVIEW_WINDOW: after a submission the client has this long before the AI agent may settle. */
 export const REVIEW_WINDOW_SECONDS = 24 * 60 * 60;
 // USDC ERC-20 view (6 decimals). Same predeploy on Arc mainnet and testnet.
 export const USDC = "0x3600000000000000000000000000000000000000" as const;
@@ -34,7 +34,7 @@ export const usdcAbi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
 ]);
 
-// Mirrors TrustPayEscrow.Status
+// Mirrors HeldbyEscrow.Status
 export const STATUS = ["None", "Funded", "Submitted", "Disputed", "Released", "Refunded", "Resolved"] as const;
 export type Status = (typeof STATUS)[number];
 

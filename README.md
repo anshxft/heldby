@@ -1,4 +1,4 @@
-# TrustPay — USDC escrow on Arc with an AI arbiter
+# Heldby — USDC escrow on Arc with an AI arbiter
 
 Freelancers get paid for finished work, clients only pay for work that matches the brief.
 A client locks USDC in an escrow contract on [Arc](https://arc.io); the freelancer submits a link;
@@ -21,7 +21,7 @@ The arbiter can only split a deal between its client and freelancer — it can n
 ## Repo
 | Path | What |
 |---|---|
-| `contracts/` | Foundry project: `TrustPayEscrow.sol`, 22 tests incl. a fuzz test that funds are always conserved |
+| `contracts/` | Foundry project: `HeldbyEscrow.sol`, 22 tests incl. a fuzz test that funds are always conserved |
 | `web/` | Next.js app: Swiss-style landing page, escrow app (wagmi/viem), AI agent API, Pip the mascot |
 | `web/src/lib/agent.ts` | The arbiter: fetches the delivery (GitHub PR files or page text), asks an open-source model, calls `resolve` |
 

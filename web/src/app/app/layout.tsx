@@ -6,7 +6,7 @@ import { NetworkNote, NetworkSwitch, Wallet } from "./ui";
 
 export const metadata: Metadata = {
   // root template suffixes "Your escrows"; this template re-applies it for /app child pages
-  title: { default: "Your escrows", template: "%s · TrustPay" },
+  title: { default: "Your escrows", template: "%s · Heldby" },
   description: "See every USDC escrow where you are the client or the freelancer, with live status on Arc.",
   alternates: { canonical: "/app" },
 };
@@ -18,7 +18,7 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
         <header className="flex items-center justify-between rounded-[22px] bg-paper px-5 py-3 sm:rounded-[28px] sm:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-              <LogoMark className="size-5" /> TrustPay
+              <LogoMark className="size-5" /> Heldby
             </Link>
             <nav className="hidden gap-5 text-[13px] font-medium sm:flex">
               <Link href="/app" className="link">Escrows</Link>

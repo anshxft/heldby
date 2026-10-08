@@ -6,7 +6,7 @@ export const MARK = {
   funds: { x: 40, y: 40, size: 20 },
 };
 
-/** TrustPay mark. Brackets follow `currentColor`; the held square is always signal red. */
+/** Heldby mark. Brackets follow `currentColor`; the held square is always signal red. */
 export function LogoMark({ className = "size-6" }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden>

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {TrustPayEscrow} from "../src/TrustPayEscrow.sol";
+import {HeldbyEscrow} from "../src/HeldbyEscrow.sol";
 
 contract MockUSDC is ERC20("USD Coin", "USDC") {
     function decimals() public pure override returns (uint8) {
@@ -15,9 +15,9 @@ contract MockUSDC is ERC20("USD Coin", "USDC") {
     }
 }
 
-contract TrustPayEscrowTest is Test {
+contract HeldbyEscrowTest is Test {
     MockUSDC usdc;
-    TrustPayEscrow escrow;
+    HeldbyEscrow escrow;
 
     address client = makeAddr("client");
     address freelancer = makeAddr("freelancer");
@@ -29,7 +29,7 @@ contract TrustPayEscrowTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        escrow = new TrustPayEscrow(usdc, arbiter);
+        escrow = new HeldbyEscrow(usdc, arbiter);
         deadline = uint40(block.timestamp + 7 days);
         usdc.mint(client, 1_000e6);
         vm.prank(client);
@@ -46,7 +46,7 @@ contract TrustPayEscrowTest is Test {
         escrow.submitWork(id, "github.com/rahul/logo-kit/pull/7");
     }
 
-    function _status(uint256 id) internal view returns (TrustPayEscrow.Status s) {
+    function _status(uint256 id) internal view returns (HeldbyEscrow.Status s) {
         (,,,,,, s) = escrow.deals(id);
     }
 
@@ -63,22 +63,22 @@ contract TrustPayEscrowTest is Test {
         assertEq(id, 1);
         assertEq(usdc.balanceOf(address(escrow)), AMOUNT);
         assertEq(usdc.balanceOf(client), 1_000e6 - AMOUNT);
-        assertEq(uint8(_status(id)), uint8(TrustPayEscrow.Status.Funded));
+        assertEq(uint8(_status(id)), uint8(HeldbyEscrow.Status.Funded));
     }
 
     function test_createRejectsBadParams() public {
         vm.startPrank(client);
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(address(0), AMOUNT, deadline, "brief");
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(client, AMOUNT, deadline, "brief");
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(freelancer, 0, deadline, "brief");
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(freelancer, AMOUNT, uint40(block.timestamp), "brief");
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(freelancer, AMOUNT, deadline, "");
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.createDeal(freelancer, AMOUNT, deadline, string(new bytes(1001)));
         vm.stopPrank();
     }
@@ -98,7 +98,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         vm.startPrank(client);
         escrow.release(id);
-        vm.expectRevert(TrustPayEscrow.WrongStatus.selector);
+        vm.expectRevert(HeldbyEscrow.WrongStatus.selector);
         escrow.release(id);
         vm.stopPrank();
     }
@@ -106,7 +106,7 @@ contract TrustPayEscrowTest is Test {
     function test_onlyClientCanRelease() public {
         uint256 id = _create();
         vm.prank(freelancer);
-        vm.expectRevert(TrustPayEscrow.NotAllowed.selector);
+        vm.expectRevert(HeldbyEscrow.NotAllowed.selector);
         escrow.release(id);
     }
 
@@ -115,7 +115,7 @@ contract TrustPayEscrowTest is Test {
     function test_onlyFreelancerCanSubmit() public {
         uint256 id = _create();
         vm.prank(stranger);
-        vm.expectRevert(TrustPayEscrow.NotAllowed.selector);
+        vm.expectRevert(HeldbyEscrow.NotAllowed.selector);
         escrow.submitWork(id, "x");
     }
 
@@ -123,7 +123,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         vm.warp(deadline + 1);
         vm.prank(freelancer);
-        vm.expectRevert(TrustPayEscrow.TooLate.selector);
+        vm.expectRevert(HeldbyEscrow.TooLate.selector);
         escrow.submitWork(id, "x");
     }
 
@@ -132,7 +132,7 @@ contract TrustPayEscrowTest is Test {
     function test_refundBlockedBeforeDeadline() public {
         uint256 id = _create();
         vm.prank(client);
-        vm.expectRevert(TrustPayEscrow.TooEarly.selector);
+        vm.expectRevert(HeldbyEscrow.TooEarly.selector);
         escrow.refund(id);
     }
 
@@ -155,7 +155,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         _submit(id);
         vm.warp(deadline + 1);
-        vm.expectRevert(TrustPayEscrow.WrongStatus.selector);
+        vm.expectRevert(HeldbyEscrow.WrongStatus.selector);
         escrow.refund(id);
     }
 
@@ -184,7 +184,7 @@ contract TrustPayEscrowTest is Test {
     function test_arbiterCannotActBeforeSubmission() public {
         uint256 id = _create();
         vm.prank(arbiter);
-        vm.expectRevert(TrustPayEscrow.WrongStatus.selector);
+        vm.expectRevert(HeldbyEscrow.WrongStatus.selector);
         escrow.resolve(id, 10_000, "");
     }
 
@@ -192,7 +192,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         _submit(id);
         vm.prank(freelancer);
-        vm.expectRevert(TrustPayEscrow.NotAllowed.selector);
+        vm.expectRevert(HeldbyEscrow.NotAllowed.selector);
         escrow.resolve(id, 10_000, "");
     }
 
@@ -200,7 +200,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         _submitAndWait(id);
         vm.prank(arbiter);
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.resolve(id, 10_001, "");
     }
 
@@ -208,7 +208,7 @@ contract TrustPayEscrowTest is Test {
         uint256 id = _create();
         _submit(id);
         vm.prank(stranger);
-        vm.expectRevert(TrustPayEscrow.NotAllowed.selector);
+        vm.expectRevert(HeldbyEscrow.NotAllowed.selector);
         escrow.dispute(id, "");
     }
 
@@ -219,7 +219,7 @@ contract TrustPayEscrowTest is Test {
         _submit(id);
         vm.prank(client);
         escrow.dispute(id, "only 2 variants");
-        (TrustPayEscrow.Deal memory d, TrustPayEscrow.Notes memory n) = escrow.getDeal(id);
+        (HeldbyEscrow.Deal memory d, HeldbyEscrow.Notes memory n) = escrow.getDeal(id);
         assertEq(d.client, client);
         assertEq(d.submittedAt, block.timestamp);
         assertEq(n.terms, "3 logo variants, SVG + PNG");
@@ -236,7 +236,7 @@ contract TrustPayEscrowTest is Test {
         _submit(id);
         vm.warp(block.timestamp + escrow.REVIEW_WINDOW() - 1);
         vm.prank(arbiter);
-        vm.expectRevert(TrustPayEscrow.TooEarly.selector);
+        vm.expectRevert(HeldbyEscrow.TooEarly.selector);
         escrow.resolve(id, 10_000, "");
     }
 
@@ -247,7 +247,7 @@ contract TrustPayEscrowTest is Test {
         escrow.dispute(id, "client is silent");
         vm.prank(arbiter);
         escrow.resolve(id, 10_000, "work matches the brief");
-        (TrustPayEscrow.Deal memory d, TrustPayEscrow.Notes memory n) = escrow.getDeal(id);
+        (HeldbyEscrow.Deal memory d, HeldbyEscrow.Notes memory n) = escrow.getDeal(id);
         assertEq(d.freelancerBps, 10_000);
         assertEq(n.verdict, "work matches the brief");
     }
@@ -255,10 +255,10 @@ contract TrustPayEscrowTest is Test {
     function test_rejectsOversizedText() public {
         uint256 id = _create();
         vm.prank(freelancer);
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.submitWork(id, string(new bytes(501)));
         vm.prank(freelancer);
-        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        vm.expectRevert(HeldbyEscrow.InvalidParams.selector);
         escrow.submitWork(id, "");
     }
 

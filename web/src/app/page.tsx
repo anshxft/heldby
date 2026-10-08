@@ -8,7 +8,7 @@ import { REPO_URL, SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "TrustPay",
+  name: "Heldby",
   url: SITE_URL,
   description: SITE_DESCRIPTION,
   applicationCategory: "FinanceApplication",
@@ -70,7 +70,7 @@ export default function Home() {
         <header className="flex items-start justify-between">
           <a href="#" className="pop flex flex-col gap-1 text-[11px] leading-tight">
             <span className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-              <LogoMark className="size-5" /> TrustPay
+              <LogoMark className="size-5" /> Heldby
             </span>
             <span className="text-muted">USDC escrow / Arc</span>
           </a>
@@ -188,7 +188,7 @@ export default function Home() {
 
           <div className="reveal-group rounded-2xl border border-paper/10 bg-black/40 p-5 font-mono text-[13px] leading-relaxed" data-stagger="300">
             <p className="mb-4 flex items-center gap-2 text-[11px] text-paper/40">
-              <span className="size-2 rounded-full bg-red" aria-hidden /> trustpay-agent · live
+              <span className="size-2 rounded-full bg-red" aria-hidden /> heldby-agent · live
             </p>
             {terminal.map((l) => (
               <p key={l.t} className={`reveal ${l.c}`}>{l.t}</p>
@@ -198,7 +198,7 @@ export default function Home() {
       </section>
 
       {/* 05 — Features */}
-      <Sheet index="05" label="Why TrustPay">
+      <Sheet index="05" label="Why Heldby">
         <ul className="reveal-group border-b border-line" data-stagger="70">
           {features.map((f, i) => (
             <li key={f.title} className="reveal group grid grid-cols-[2.5rem_1fr_auto] items-baseline gap-x-4 border-t border-line py-6 transition-colors duration-200 hover:text-red sm:grid-cols-[4rem_1.2fr_1fr_auto]">
@@ -239,7 +239,7 @@ export default function Home() {
           </a>
         </div>
         <footer className="flex flex-wrap justify-between gap-2 border-t border-red-ink/20 pt-4 text-[11px]">
-          <span>TrustPay © 2026 · Built for Arc Microgrants</span>
+          <span>Heldby © 2026 · Built for Arc Microgrants</span>
           <nav aria-label="Footer" className="flex flex-wrap gap-4">
             <Link href="/app" className="link">Escrows</Link>
             <Link href="/app/new" className="link">New escrow</Link>

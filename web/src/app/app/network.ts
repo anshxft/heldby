@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { DEFAULT_NETWORK, NETWORKS, type Network, type NetworkId, isNetworkId } from "@/lib/networks";
 
-const KEY = "trustpay-network";
+const KEY = "heldby-network";
 const listeners = new Set<() => void>();
 let memory: NetworkId | null = null;
 
