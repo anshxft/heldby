@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, ArrowUpRight, Zap } from "lucide-react";
 import { Motion } from "@/components/motion";
 import { Pet } from "@/components/pet";
+import { LogoMark } from "@/components/logo";
 
 const heroLines = [
   { text: "Money held", indent: "ml-[12%]", speed: -0.08 },
@@ -55,7 +56,7 @@ export default function Home() {
         <header className="flex items-start justify-between">
           <a href="#" className="pop flex flex-col gap-1 text-[11px] leading-tight">
             <span className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-              <span className="size-3 bg-red" aria-hidden /> TrustPay
+              <LogoMark className="size-5" /> TrustPay
             </span>
             <span className="text-muted">USDC escrow / Arc</span>
           </a>

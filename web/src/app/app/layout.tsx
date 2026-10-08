@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Providers } from "./providers";
+import { LogoMark } from "@/components/logo";
 import { NetworkNote, NetworkSwitch, Wallet } from "./ui";
 
 export default function AppLayout({ children }: LayoutProps<"/app">) {
@@ -9,7 +10,7 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
         <header className="flex items-center justify-between rounded-[22px] bg-paper px-5 py-3 sm:rounded-[28px] sm:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-              <span className="size-3 bg-red" aria-hidden /> TrustPay
+              <LogoMark className="size-5" /> TrustPay
             </Link>
             <nav className="hidden gap-5 text-[13px] font-medium sm:flex">
               <Link href="/app" className="link">Escrows</Link>
