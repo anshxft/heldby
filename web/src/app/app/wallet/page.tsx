@@ -1,11 +1,11 @@
 "use client";
 
 import { createViemAdapterFromProvider } from "@circle-fin/adapter-viem-v2";
-import { AppKit, type SwapEstimate } from "@circle-fin/app-kit";
-import { useQueryClient } from "@tanstack/react-query";
+import { AppKit } from "@circle-fin/app-kit";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, ArrowUpRight, Check, Loader2 } from "lucide-react";
-import { useState } from "react";
-import type { EIP1193Provider } from "viem";
+import { useEffect, useState } from "react";
+import { type EIP1193Provider, formatUnits, parseUnits } from "viem";
 import { useConnection, useReadContract, useSwitchChain } from "wagmi";
 import { ARC_KIT, BRIDGE_SOURCES, EURC, IS_TESTNET, SWAP_TOKENS, type SwapToken, isAmount } from "@/lib/circle";
 import { USDC, chain, errorText, usd, usdcAbi } from "@/lib/escrow";
@@ -118,146 +118,167 @@ function Balances() {
 
 // ---------------- swap ----------------
 
-type Reviewed = { estimate: SwapEstimate; tokenIn: SwapToken; tokenOut: SwapToken; amountIn: string; account: string };
+/** Settles a typed value after `ms` without a new keystroke. */
+function useDebounced<T>(value: T, ms: number) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}
 
 function SwapPanel() {
-  const { address } = useConnection();
-  const getAdapter = useAdapter();
+  const { address, connector, chainId } = useConnection();
+  const switchChain = useSwitchChain();
   const qc = useQueryClient();
   const [tokenIn, setTokenIn] = useState<SwapToken>("USDC");
   const [amount, setAmount] = useState("");
-  const [reviewed, setReviewed] = useState<Reviewed | null>(null);
-  const [busy, setBusy] = useState<"quote" | "swap" | null>(null);
+  const [swapping, setSwapping] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ out: string; token: string; url?: string } | null>(null);
   const balanceIn = useTokenBalance(TOKEN_ADDRESS[tokenIn]);
-
   const tokenOut = SWAP_TOKENS.find((t) => t !== tokenIn)!;
-  // a quote only stays valid for exactly what was reviewed
-  const stale = !!reviewed && (reviewed.tokenIn !== tokenIn || reviewed.amountIn !== amount || reviewed.account !== address);
+  const onArc = chainId === chain.id;
+  const typed = useDebounced(amount, 400);
 
-  function reset(next: () => void) {
-    next();
-    setReviewed(null);
-    setDone(null);
-    setError("");
-  }
+  const adapter = async () => createViemAdapterFromProvider({ provider: (await connector!.getProvider()) as EIP1193Provider });
+  const request = (amountIn: string) => ({ tokenIn, tokenOut, amountIn, config: { slippageBps: 100 } });
 
-  async function quote() {
-    setError("");
-    if (!isAmount(amount)) return setError("Enter an amount like 10 or 2.50.");
-    setBusy("quote");
-    try {
-      const adapter = await getAdapter(chain.id);
-      const estimate = await getKit().estimateSwap({
-        from: { adapter, chain: ARC_KIT },
-        tokenIn,
-        tokenOut,
-        amountIn: amount,
-        config: { slippageBps: 100 },
-      });
-      setReviewed({ estimate, tokenIn, tokenOut, amountIn: amount, account: address! });
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      setBusy(null);
-    }
-  }
+  // live quote: refetches as you type (debounced) and every 15s while visible
+  const quote = useQuery({
+    queryKey: ["swap-quote", tokenIn, typed, address],
+    enabled: isAmount(typed) && onArc && !!connector,
+    refetchInterval: 15_000,
+    retry: 1,
+    queryFn: async () => getKit().estimateSwap({ from: { adapter: await adapter(), chain: ARC_KIT }, ...request(typed) }),
+  });
 
-  // only ever called from the Swap button, after the quote above is on screen
+  const balance = balanceIn.data;
+  const tooMuch = balance !== undefined && isAmount(amount) && parseUnits(amount, 6) > balance;
+  const current = quote.data && typed === amount ? quote.data : undefined;
+
+  // only ever called from the Swap button, with the quote on screen
   async function swap() {
-    if (!reviewed || stale) return setError("Get a fresh quote first.");
-    setBusy("swap");
+    setSwapping(true);
     setError("");
+    setDone(null);
     try {
-      const adapter = await getAdapter(chain.id);
-      const result = await getKit().swap({
-        from: { adapter, chain: ARC_KIT },
-        tokenIn: reviewed.tokenIn,
-        tokenOut: reviewed.tokenOut,
-        amountIn: reviewed.amountIn,
-        config: { slippageBps: 100 },
-      });
-      setDone({ out: result.amountOut ?? reviewed.estimate.estimatedOutput.amount, token: reviewed.tokenOut, url: result.explorerUrl });
-      setReviewed(null);
+      const result = await getKit().swap({ from: { adapter: await adapter(), chain: ARC_KIT }, ...request(amount) });
+      setDone({ out: result.amountOut ?? current?.estimatedOutput.amount ?? "", token: tokenOut, url: result.explorerUrl });
       setAmount("");
       await qc.invalidateQueries();
     } catch (e) {
       setError(errorText(e));
     } finally {
-      setBusy(null);
+      setSwapping(false);
     }
   }
 
-  const overBalance = balanceIn.data !== undefined && isAmount(amount) && Number(amount) * 1e6 > Number(balanceIn.data);
-  const fees = reviewed?.estimate.fees?.map((f) => `${f.amount} ${f.token}`).join(" + ");
+  const action: { label: string; run?: () => void } = !onArc
+    ? { label: `Switch to ${chain.name}`, run: () => switchChain.mutate({ chainId: chain.id }) }
+    : !amount
+      ? { label: "Enter an amount" }
+      : !isAmount(amount)
+        ? { label: "Invalid amount" }
+        : tooMuch
+          ? { label: `Insufficient ${tokenIn} balance` }
+          : swapping
+            ? { label: "Swapping…" }
+            : !current
+              ? { label: quote.isError ? "No route right now" : "Fetching best price…" }
+              : { label: `Swap ${amount} ${tokenIn} → ${tokenOut}`, run: swap };
+
+  const rate = current && Number(current.estimatedOutput.amount) / Number(current.amountIn);
+  const fees = current?.fees?.map((f) => `${Number(f.amount).toFixed(4)} ${f.token}`).join(" + ");
 
   return (
-    <div className="grid max-w-xl gap-6">
-      <label className="grid gap-2">
-        <span className={label}>You pay</span>
-        <div className="flex gap-2">
-          <input
-            className={`${field} font-mono`}
-            inputMode="decimal"
-            placeholder="10.00"
-            value={amount}
-            onChange={(e) => reset(() => setAmount(e.target.value.replace(/[^\d.]/g, "")))}
-          />
-          <span className="grid w-24 place-items-center rounded-xl border border-line font-medium">{tokenIn}</span>
+    <div className="grid max-w-xl gap-1">
+      <div className="rounded-2xl border border-line bg-paper-2 p-4">
+        <div className="flex items-center justify-between">
+          <span className={label}>You pay</span>
+          <span className="text-xs text-muted">
+            Balance {balance !== undefined ? usd(balance) : "…"}
+            {balance !== undefined && balance > 0n && (
+              <button className="ml-2 font-medium text-ink underline-offset-2 hover:underline" onClick={() => setAmount(formatUnits(balance, 6))}>
+                Max
+              </button>
+            )}
+          </span>
         </div>
-        <span className="text-xs text-muted">
-          Balance: {balanceIn.data !== undefined ? usd(balanceIn.data) : "…"} {tokenIn}
-          {overBalance && <span className="text-red"> · more than you have</span>}
-          {isAmount(amount) && Number(amount) > 100 && <span> · large amount, double-check it</span>}
-        </span>
-      </label>
-
-      <button
-        className={`${btnGhost} w-11 self-center px-0`}
-        aria-label="Flip direction"
-        onClick={() => reset(() => setTokenIn(tokenOut))}
-      >
-        <ArrowDownUp className="size-4" aria-hidden />
-      </button>
-
-      <div className="grid gap-2">
-        <span className={label}>You receive</span>
-        <p className="flex items-baseline justify-between rounded-xl border border-line bg-paper-2 px-4 py-3">
-          <span className="font-mono text-lg">{reviewed && !stale ? `≈ ${reviewed.estimate.estimatedOutput.amount}` : "—"}</span>
-          <span className="font-medium">{tokenOut}</span>
-        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <input
+            aria-label={`Amount of ${tokenIn} to pay`}
+            className="w-full bg-transparent font-mono text-3xl tracking-tight outline-none placeholder:text-muted/50"
+            inputMode="decimal"
+            placeholder="0"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value.replace(/[^\d.]/g, ""));
+              setDone(null);
+              setError("");
+            }}
+          />
+          <TokenChip token={tokenIn} />
+        </div>
       </div>
 
-      {reviewed && !stale && (
-        <dl className="grid gap-1 border-t border-line pt-4 text-sm">
-          <Row k="Minimum received" v={`${reviewed.estimate.stopLimit.amount} ${reviewed.estimate.stopLimit.token}`} />
-          <Row k="Slippage limit" v="1%" />
+      <button
+        aria-label="Switch pay and receive tokens"
+        onClick={() => setTokenIn(tokenOut)}
+        className="relative z-10 -my-4 grid size-10 place-items-center justify-self-center rounded-xl border-4 border-paper bg-ink text-paper transition-transform duration-300 hover:rotate-180"
+      >
+        <ArrowDownUp size={16} aria-hidden />
+      </button>
+
+      <div className="rounded-2xl border border-line bg-paper-2 p-4">
+        <span className={label}>You receive</span>
+        <div className="mt-2 flex items-center gap-3">
+          <p className={`w-full font-mono text-3xl tracking-tight ${current ? "" : "text-muted/50"} ${quote.isFetching && !current ? "animate-pulse" : ""}`}>
+            {current ? Number(current.estimatedOutput.amount).toFixed(4) : "0"}
+          </p>
+          <TokenChip token={tokenOut} />
+        </div>
+      </div>
+
+      <button className={`${btn} mt-4 h-14 w-full text-base`} disabled={!action.run} onClick={action.run}>
+        {(swapping || (quote.isFetching && !current && isAmount(amount))) && <Loader2 size={16} className="animate-spin" aria-hidden />}
+        {action.label}
+      </button>
+
+      {current && (
+        <dl className="mt-4 grid gap-1.5 text-sm">
+          <Row k="Rate" v={`1 ${tokenIn} ≈ ${rate!.toFixed(4)} ${tokenOut}`} />
+          <Row k="Minimum received" v={`${Number(current.stopLimit.amount).toFixed(4)} ${current.stopLimit.token}`} />
+          <Row k="Max slippage" v="1%" />
           {fees && <Row k="Fees" v={fees} />}
-          <Row k="Network" v={chain.name} />
-          <p className="mt-2 text-xs text-muted">
-            Routed through a third-party DEX aggregator (currently LiFi; it may vary by route). By swapping you accept the aggregator’s terms.
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+            {quote.isFetching && <Loader2 size={12} className="animate-spin" aria-hidden />}
+            Live price, refreshes every 15s. Routed via a third-party DEX aggregator (currently LiFi; may vary by route) — swapping accepts its terms.
           </p>
         </dl>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <button className={btnGhost} disabled={!!busy || !isAmount(amount)} onClick={quote}>
-          {busy === "quote" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} {reviewed && !stale ? "Refresh quote" : "Get quote"}
-        </button>
-        <button className={btn} disabled={!!busy || !reviewed || stale || overBalance} onClick={swap}>
-          {busy === "swap" ? "Swapping…" : reviewed && !stale ? `Swap ${reviewed.amountIn} ${tokenIn} → ${tokenOut}` : "Swap"}
-        </button>
-      </div>
-
-      {error && <p role="alert" className="text-sm text-red">{error}</p>}
+      {quote.isError && <p role="alert" className="mt-3 text-sm text-red">{errorText(quote.error)}</p>}
+      {error && <p role="alert" className="mt-3 text-sm text-red">{error}</p>}
       {done && (
-        <p className="flex items-center gap-2 text-sm">
-          <Check className="size-4" aria-hidden /> Received {done.out} {done.token}.
+        <p className="mt-3 flex items-center gap-2 text-sm">
+          <Check size={16} aria-hidden /> Received {done.out} {done.token}.
           {done.url && <ExplorerLink href={done.url} />}
         </p>
       )}
     </div>
+  );
+}
+
+function TokenChip({ token }: { token: SwapToken }) {
+  return (
+    <span className="flex shrink-0 items-center gap-2 rounded-full bg-paper px-3 py-1.5 font-medium shadow-sm ring-1 ring-line">
+      <span className={`grid size-6 place-items-center rounded-full text-[11px] font-semibold ${token === "USDC" ? "bg-[#2775ca] text-white" : "bg-ink text-paper"}`}>
+        {token === "USDC" ? "$" : "€"}
+      </span>
+      {token}
+    </span>
   );
 }
 
