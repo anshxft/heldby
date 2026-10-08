@@ -16,6 +16,13 @@ assert.match(await fetchEvidence("http://192.168.1.10/x"), /private or local/);
 console.log("✓ offline checks passed");
 
 if (process.argv.includes("--live")) {
+  // a public URL that redirects to localhost must be refused at the redirect hop
+  assert.match(await fetchEvidence("https://httpbin.org/redirect-to?url=http%3A%2F%2Flocalhost%3A3000%2F"), /redirects to a private/);
+  assert.match(await fetchEvidence("https://raw.githubusercontent.com/vercel/next.js/canary/readme.md"), /^Contents of/);
+  console.log("✓ live evidence checks passed");
+}
+
+if (process.argv.includes("--live")) {
   const brief = "Landing page: hero with headline, a pricing section with 3 plans, and a contact form.";
   const cases = {
     full: "Delivered page contains: <h1>Ship faster</h1> hero section; Pricing: Starter $9, Pro $29, Team $99; Contact form with name, email, message fields and a Send button.",

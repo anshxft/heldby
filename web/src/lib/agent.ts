@@ -94,13 +94,22 @@ export async function fetchEvidence(deliverable: string): Promise<string> {
     const pr = url.hostname === "github.com" && url.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
     if (pr) return await githubPr(pr[1], pr[2], pr[3]);
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(8_000), redirect: "follow" });
-    if (!res.ok) return `Opening the link returned HTTP ${res.status}.`;
-    const type = res.headers.get("content-type") ?? "unknown";
-    if (!/text|json|xml/.test(type)) {
-      return `The link is a ${type} file (${res.headers.get("content-length") ?? "unknown"} bytes). Its contents can't be read as text, only that it exists.`;
+    // follow redirects by hand so every hop gets the same public-host check
+    let res: Response | undefined;
+    for (let hop = 0; hop <= 3; hop++) {
+      res = await fetch(url, { signal: AbortSignal.timeout(8_000), redirect: "manual" });
+      const next = res.status >= 300 && res.status < 400 && res.headers.get("location");
+      if (!next) break;
+      url = new URL(next, url);
+      if (!isPublicHost(url)) return `The link redirects to a private or local address (${url.host}), which the agent cannot open.`;
+      if (hop === 3) return "The link redirects too many times.";
     }
-    const body = (await res.text()).slice(0, 200_000);
+    if (!res!.ok) return `Opening the link returned HTTP ${res!.status}.`;
+    const type = res!.headers.get("content-type") ?? "unknown";
+    if (!/text|json|xml/.test(type)) {
+      return `The link is a ${type} file (${res!.headers.get("content-length") ?? "unknown"} bytes). Its contents can't be read as text, only that it exists.`;
+    }
+    const body = await readCapped(res!, 200_000);
     const text = /html/.test(type) ? htmlToText(body) : body;
     return `Contents of ${url.href}:\n${text.slice(0, MAX_EVIDENCE)}`;
   } catch (e) {
@@ -129,6 +138,22 @@ function isPublicHost(url: URL) {
   if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || h.endsWith(".localhost")) return false;
   if (/^[\d.]+$/.test(h) || h.includes(":")) return false; // bare IPv4 / IPv6 literals
   return true;
+}
+
+/** Read at most `limit` bytes of a body, then stop downloading — a huge file can't exhaust memory. */
+async function readCapped(res: Response, limit: number) {
+  const reader = res.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (size < limit) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    size += value.length;
+  }
+  await reader.cancel().catch(() => {});
+  return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, limit));
 }
 
 function htmlToText(html: string) {

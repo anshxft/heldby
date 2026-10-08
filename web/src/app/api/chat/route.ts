@@ -1,4 +1,5 @@
 import { type ChatMessage, groqChat } from "@/lib/groq";
+import { rateLimit, tooMany } from "@/lib/rate-limit";
 
 const SYSTEM = `You are Pip, the small, cheerful mascot of TrustPay. You live on the TrustPay website and help visitors understand it.
 
@@ -29,8 +30,9 @@ type PipMood = (typeof PIP_MOODS)[number];
 const MAX_TURNS = 12;
 const MAX_CHARS = 600;
 
-// ponytail: no rate limit; relies on Groq's free-tier cap. Add per-IP limiting before real traffic.
 export async function POST(request: Request) {
+  const wait = rateLimit(request, "chat", 20, 60_000); // 20 messages a minute per IP
+  if (wait) return tooMany(wait);
   const body = (await request.json().catch(() => null)) as { messages?: unknown } | null;
   const raw = Array.isArray(body?.messages) ? body.messages : null;
   if (!raw?.length) return Response.json({ error: "Send { messages: [...] }." }, { status: 400 });
