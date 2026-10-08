@@ -1,7 +1,7 @@
 import { formatUnits, parseAbi } from "viem";
 
 // Network-specific values (chain, escrow address, deploy block) live in ./networks.ts.
-/** After work is submitted the client gets this long to release or dispute before the AI agent may settle on its own. */
+/** Mirrors TrustPayEscrow.REVIEW_WINDOW: after a submission the client has this long before the AI agent may settle. */
 export const REVIEW_WINDOW_SECONDS = 24 * 60 * 60;
 // USDC ERC-20 view (6 decimals). Same predeploy on Arc mainnet and testnet.
 export const USDC = "0x3600000000000000000000000000000000000000" as const;
@@ -14,7 +14,9 @@ export const escrowAbi = parseAbi([
   "function dispute(uint256 id, string reason)",
   "function resolve(uint256 id, uint16 freelancerBps, string reason)", // arbiter only (server agent)
   "function dealCount() view returns (uint256)",
-  "function deals(uint256) view returns (address client, address freelancer, uint96 amount, uint40 deadline, uint8 status)",
+  "function deals(uint256) view returns (address client, address freelancer, uint96 amount, uint40 deadline, uint40 submittedAt, uint16 freelancerBps, uint8 status)",
+  "function getDeal(uint256 id) view returns ((address client, address freelancer, uint96 amount, uint40 deadline, uint40 submittedAt, uint16 freelancerBps, uint8 status) deal, (string terms, string deliverable, address disputedBy, string disputeReason, string verdict) note)",
+  "function dealsOf(address account) view returns (uint256[])",
   "event DealCreated(uint256 indexed id, address indexed client, address indexed freelancer, uint256 amount, uint256 deadline, string terms)",
   "event WorkSubmitted(uint256 indexed id, string deliverable)",
   "event Disputed(uint256 indexed id, address indexed by, string reason)",

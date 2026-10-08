@@ -1,5 +1,5 @@
 import "server-only";
-import { createPublicClient, createWalletClient, http } from "viem";
+import { createPublicClient, createWalletClient, http, zeroAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { REVIEW_WINDOW_SECONDS, STATUS, escrowAbi } from "./escrow";
 import { groqChat } from "./groq";
@@ -27,28 +27,19 @@ export async function verifyDeal(id: bigint, net: Network): Promise<AgentResult>
   if (!net.escrow) throw new AgentError(`TrustPay isn't deployed on ${net.chain.name} yet.`, 400);
   const ESCROW = net.escrow;
   const publicClient = createPublicClient({ chain: net.chain, transport: http() });
-  const [, , , , status] = await publicClient.readContract({ address: ESCROW, abi: escrowAbi, functionName: "deals", args: [id] });
-  const state = STATUS[status];
+  const [d, note] = await publicClient.readContract({ address: ESCROW, abi: escrowAbi, functionName: "getDeal", args: [id] });
+  const state = STATUS[d.status];
   if (state !== "Submitted" && state !== "Disputed") throw new AgentError(`Escrow is ${state}; the agent only reviews submitted or disputed work.`, 409);
 
-  const base = { address: ESCROW, abi: escrowAbi, fromBlock: net.deployBlock, args: { id } } as const;
-  const [created, submitted, disputed] = await Promise.all([
-    publicClient.getContractEvents({ ...base, eventName: "DealCreated" }),
-    publicClient.getContractEvents({ ...base, eventName: "WorkSubmitted" }),
-    publicClient.getContractEvents({ ...base, eventName: "Disputed" }),
-  ]);
-  const brief = created[0]?.args.terms ?? "";
-  const deliverable = submitted[0]?.args.deliverable ?? "";
-  const dispute = disputed[0]?.args;
+  // undisputed work: the client gets the review window first (the contract enforces it too); a dispute skips it
+  const opensAt = d.submittedAt + REVIEW_WINDOW_SECONDS;
+  if (state === "Submitted" && Date.now() / 1000 < opensAt)
+    throw new AgentError(`The client can review until ${new Date(opensAt * 1000).toUTCString()}. Raise a dispute to ask the agent sooner.`, 409);
 
-  // undisputed work: the client gets the review window first; a dispute lets the agent act immediately
-  if (state === "Submitted" && submitted[0]) {
-    const { timestamp } = await publicClient.getBlock({ blockNumber: submitted[0].blockNumber });
-    const opensAt = Number(timestamp) + REVIEW_WINDOW_SECONDS;
-    if (Date.now() / 1000 < opensAt)
-      throw new AgentError(`The client can review until ${new Date(opensAt * 1000).toUTCString()}. Raise a dispute to ask the agent sooner.`, 409);
-  }
-  const client = created[0]?.args.client;
+  const brief = note.terms;
+  const deliverable = note.deliverable;
+  const dispute = note.disputedBy !== zeroAddress ? { by: note.disputedBy, reason: note.disputeReason } : undefined;
+  const client = d.client;
 
   const evidence = await fetchEvidence(deliverable);
   const v = await askModel({

@@ -47,7 +47,13 @@ contract TrustPayEscrowTest is Test {
     }
 
     function _status(uint256 id) internal view returns (TrustPayEscrow.Status s) {
-        (,,,, s) = escrow.deals(id);
+        (,,,,,, s) = escrow.deals(id);
+    }
+
+    /// submitted work and the client's review window has run out
+    function _submitAndWait(uint256 id) internal {
+        _submit(id);
+        vm.warp(block.timestamp + escrow.REVIEW_WINDOW());
     }
 
     // --- create ---
@@ -63,13 +69,17 @@ contract TrustPayEscrowTest is Test {
     function test_createRejectsBadParams() public {
         vm.startPrank(client);
         vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
-        escrow.createDeal(address(0), AMOUNT, deadline, "");
+        escrow.createDeal(address(0), AMOUNT, deadline, "brief");
         vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
-        escrow.createDeal(client, AMOUNT, deadline, "");
+        escrow.createDeal(client, AMOUNT, deadline, "brief");
         vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
-        escrow.createDeal(freelancer, 0, deadline, "");
+        escrow.createDeal(freelancer, 0, deadline, "brief");
         vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
-        escrow.createDeal(freelancer, AMOUNT, uint40(block.timestamp), "");
+        escrow.createDeal(freelancer, AMOUNT, uint40(block.timestamp), "brief");
+        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        escrow.createDeal(freelancer, AMOUNT, deadline, "");
+        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        escrow.createDeal(freelancer, AMOUNT, deadline, string(new bytes(1001)));
         vm.stopPrank();
     }
 
@@ -165,7 +175,7 @@ contract TrustPayEscrowTest is Test {
 
     function test_arbiterApprovesSubmittedWork() public {
         uint256 id = _create();
-        _submit(id);
+        _submitAndWait(id);
         vm.prank(arbiter);
         escrow.resolve(id, 10_000, "all requirements met");
         assertEq(usdc.balanceOf(freelancer), AMOUNT);
@@ -188,7 +198,7 @@ contract TrustPayEscrowTest is Test {
 
     function test_resolveRejectsBpsOver100Percent() public {
         uint256 id = _create();
-        _submit(id);
+        _submitAndWait(id);
         vm.prank(arbiter);
         vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
         escrow.resolve(id, 10_001, "");
@@ -202,13 +212,63 @@ contract TrustPayEscrowTest is Test {
         escrow.dispute(id, "");
     }
 
+    // --- v2: state is readable without logs; review window is on-chain ---
+
+    function test_notesAndIdsAreStored() public {
+        uint256 id = _create();
+        _submit(id);
+        vm.prank(client);
+        escrow.dispute(id, "only 2 variants");
+        (TrustPayEscrow.Deal memory d, TrustPayEscrow.Notes memory n) = escrow.getDeal(id);
+        assertEq(d.client, client);
+        assertEq(d.submittedAt, block.timestamp);
+        assertEq(n.terms, "3 logo variants, SVG + PNG");
+        assertEq(n.deliverable, "github.com/rahul/logo-kit/pull/7");
+        assertEq(n.disputedBy, client);
+        assertEq(n.disputeReason, "only 2 variants");
+        assertEq(escrow.dealsOf(client).length, 1);
+        assertEq(escrow.dealsOf(freelancer)[0], id);
+        assertEq(escrow.dealsOf(stranger).length, 0);
+    }
+
+    function test_arbiterMustWaitForReviewWindow() public {
+        uint256 id = _create();
+        _submit(id);
+        vm.warp(block.timestamp + escrow.REVIEW_WINDOW() - 1);
+        vm.prank(arbiter);
+        vm.expectRevert(TrustPayEscrow.TooEarly.selector);
+        escrow.resolve(id, 10_000, "");
+    }
+
+    function test_disputeLetsArbiterActImmediately() public {
+        uint256 id = _create();
+        _submit(id);
+        vm.prank(freelancer);
+        escrow.dispute(id, "client is silent");
+        vm.prank(arbiter);
+        escrow.resolve(id, 10_000, "work matches the brief");
+        (TrustPayEscrow.Deal memory d, TrustPayEscrow.Notes memory n) = escrow.getDeal(id);
+        assertEq(d.freelancerBps, 10_000);
+        assertEq(n.verdict, "work matches the brief");
+    }
+
+    function test_rejectsOversizedText() public {
+        uint256 id = _create();
+        vm.prank(freelancer);
+        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        escrow.submitWork(id, string(new bytes(501)));
+        vm.prank(freelancer);
+        vm.expectRevert(TrustPayEscrow.InvalidParams.selector);
+        escrow.submitWork(id, "");
+    }
+
     /// Whatever the split, every cent goes to client or freelancer — nothing stuck, nothing extra.
     function testFuzz_resolveConservesFunds(uint96 amount, uint16 bps) public {
         amount = uint96(bound(amount, 1, 1_000e6));
         bps = uint16(bound(bps, 0, 10_000));
         vm.prank(client);
-        uint256 id = escrow.createDeal(freelancer, amount, deadline, "");
-        _submit(id);
+        uint256 id = escrow.createDeal(freelancer, amount, deadline, "brief");
+        _submitAndWait(id);
         vm.prank(arbiter);
         escrow.resolve(id, bps, "");
         assertEq(usdc.balanceOf(freelancer) + usdc.balanceOf(client), 1_000e6);

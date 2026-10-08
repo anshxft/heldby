@@ -26,8 +26,6 @@ export type Network = {
   chain: Chain;
   /** TrustPay escrow contract, or null until it's deployed on this network. */
   escrow: `0x${string}` | null;
-  /** Block the escrow was deployed in — log scans start here. */
-  deployBlock: bigint;
   /** EURC ERC-20 on Arc (6 decimals). USDC is the same predeploy on both networks. */
   eurc: `0x${string}`;
   /** App Kit's name for this Arc network. */
@@ -43,7 +41,6 @@ export const NETWORKS: Record<NetworkId, Network> = {
     testnet: true,
     chain: arcTestnet,
     escrow: "0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8",
-    deployBlock: 65975895n,
     eurc: "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
     kit: "Arc_Testnet",
     bridgeSources: [
@@ -61,7 +58,6 @@ export const NETWORKS: Record<NetworkId, Network> = {
     testnet: false,
     chain: arc,
     escrow: null, // set after `forge script ... --rpc-url arc` deploys it
-    deployBlock: 0n,
     eurc: "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1",
     kit: "Arc",
     bridgeSources: [
