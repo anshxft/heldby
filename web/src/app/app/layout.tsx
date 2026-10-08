@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Providers } from "./providers";
+import { AppMotion } from "@/components/app-motion";
 import { LogoMark } from "@/components/logo";
 import { NetworkNote, NetworkSwitch, Wallet } from "./ui";
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (
     <Providers>
+      <AppMotion />
       <div className="flex min-h-screen flex-col gap-2 p-2 sm:gap-3 sm:p-3">
         <header className="flex items-center justify-between rounded-[22px] bg-paper px-5 py-3 sm:rounded-[28px] sm:px-8">
           <div className="flex items-center gap-6">

@@ -5,18 +5,14 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { useConnection } from "wagmi";
 import { short, usd } from "@/lib/escrow";
 import { useMyDeals } from "./data";
-import { NeedsWallet, StatusPill, btn, label } from "./ui";
+import { NeedsWallet, StatusPill, Title, btn, label } from "./ui";
 
 export default function Dashboard() {
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <h1 className="display text-[clamp(44px,7vw,104px)]">
-          Your
-          <br />
-          <span className="ml-[0.6em]">escrows.</span>
-        </h1>
-        <Link href="/app/new" className={btn}>
+        <Title lines={["Your", "escrows."]} />
+        <Link href="/app/new" className={btn} data-reveal>
           <Plus className="size-4" aria-hidden /> New escrow
         </Link>
       </div>
@@ -37,7 +33,7 @@ function DealList() {
   if (error) return <p className="text-red">Couldn’t load escrows: {error.message}</p>;
   if (!data.length)
     return (
-      <div className="border-t border-line py-10">
+      <div className="border-t border-line py-10" data-reveal>
         <p className="text-2xl font-medium tracking-tight">No escrows yet.</p>
         <p className="mt-2 text-muted">Create one, or ask a client to send you a Heldby link.</p>
       </div>
@@ -57,7 +53,7 @@ function DealList() {
         const role = d.client === address ? "Client" : "Freelancer";
         const other = role === "Client" ? d.freelancer : d.client;
         return (
-          <li key={d.id.toString()}>
+          <li key={d.id.toString()} data-reveal>
             <Link
               href={`/app/deal/${d.id}`}
               className="group grid grid-cols-[3rem_1fr_auto] items-center gap-x-4 gap-y-1 border-t border-line py-5 transition-colors hover:text-red sm:grid-cols-[3rem_1fr_7rem_8rem_8rem_1.5rem]"

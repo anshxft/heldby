@@ -35,11 +35,11 @@ export function DealView({ id }: { id: string }) {
         <ArrowLeft className="size-4" aria-hidden /> All escrows
       </Link>
 
-      <div className="mt-8 flex flex-wrap items-center gap-3">
+      <div className="mt-8 flex flex-wrap items-center gap-3" data-reveal>
         <span className={label}>Escrow #{id.padStart(2, "0")}</span>
         <StatusPill status={deal.status} />
       </div>
-      <h1 className="mt-4 max-w-4xl text-[clamp(28px,4vw,56px)] font-medium leading-[1.02] tracking-[-0.04em]">{deal.terms}</h1>
+      <h1 data-reveal className="mt-4 max-w-4xl text-[clamp(28px,4vw,56px)] font-medium leading-[1.02] tracking-[-0.04em]">{deal.terms}</h1>
 
       <Timeline deal={deal} />
 
@@ -79,7 +79,10 @@ function Timeline({ deal }: { deal: DealDetail }) {
     <ol className="mt-12 grid grid-cols-4 gap-1">
       {steps.map((s, i) => (
         <li key={s}>
-          <span className={`block h-1 ${i < reached ? "bg-red" : "bg-line"}`} />
+          {/* grey track; the red fill mounts when a step is reached, so it grows in (see AppMotion "bar") */}
+          <span className="relative block h-1 bg-line">
+            {i < reached && <span data-reveal="bar" className="absolute inset-0 origin-left bg-red" />}
+          </span>
           <span className={`mt-2 block text-[11px] font-medium uppercase tracking-wider ${i < reached ? "" : "text-muted"}`}>{s}</span>
         </li>
       ))}
@@ -108,7 +111,7 @@ function Details({ deal }: { deal: DealDetail }) {
   return (
     <dl className="border-b border-line">
       {rows.map(([k, v]) => (
-        <div key={k} className="grid grid-cols-[8rem_1fr] gap-4 border-t border-line py-4 text-sm">
+        <div key={k} data-reveal className="grid grid-cols-[8rem_1fr] gap-4 border-t border-line py-4 text-sm">
           <dt className={label}>{k}</dt>
           <dd>{v}</dd>
         </div>
@@ -129,7 +132,7 @@ function AddressLink({ a, suffix = "" }: { a: string; suffix?: string }) {
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-ink pt-4">
+    <section data-reveal className="border-t border-ink pt-4">
       <h2 className={label}>{title}</h2>
       <div className="mt-3 text-lg leading-snug">{children}</div>
     </section>
@@ -289,7 +292,7 @@ function Actions({ deal }: { deal: DealDetail }) {
   }
 
   return (
-    <aside className="flex flex-col gap-4 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6">
+    <aside data-reveal="card" className="flex flex-col gap-4 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6">
       <p className="text-[11px] font-medium uppercase tracking-wider">Next step</p>
       <h2 className="text-3xl font-semibold leading-none tracking-[-0.04em]">{title}</h2>
       <div className="grid gap-3 text-sm leading-snug">{body}</div>
@@ -342,7 +345,7 @@ function AgentButton({ id }: { id: bigint }) {
       </button>
       {reply?.error && <p role="alert" className="font-medium">{reply.error}</p>}
       {reply && !reply.error && (
-        <div className="grid gap-2 bg-paper p-4 text-ink">
+        <div data-reveal="pop" className="grid gap-2 bg-paper p-4 text-ink">
           <p className="flex items-baseline justify-between">
             <span className="text-[11px] font-medium uppercase tracking-wider">{reply.verdict === "unclear" ? "Needs a human" : `Verdict · ${reply.verdict}`}</span>
             {reply.verdict !== "unclear" && <span className="font-mono text-sm">{reply.freelancerPercent}% to freelancer</span>}

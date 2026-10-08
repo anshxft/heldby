@@ -10,7 +10,7 @@ import { SWAP_TOKENS, type SwapToken, isAmount } from "@/lib/circle";
 import type { Network } from "@/lib/networks";
 import { useNetwork } from "../network";
 import { USDC, errorText, usd, usdcAbi } from "@/lib/escrow";
-import { Wallet, btn, btnGhost, field, label } from "../ui";
+import { CountUp, Title, Wallet, btn, btnGhost, field, label } from "../ui";
 
 // One App Kit for swap + bridge. Keyless: a kit key must never reach the browser.
 // App Kit + adapter are heavy, so they load on first use (first quote/bridge), not with the page.
@@ -28,12 +28,8 @@ export default function WalletPage() {
 
   return (
     <>
-      <h1 className="display text-[clamp(44px,7vw,104px)]">
-        Your
-        <br />
-        <span className="ml-[0.6em]">wallet.</span>
-      </h1>
-      <p className="mt-6 max-w-xl text-muted">
+      <Title lines={["Your", "wallet."]} />
+      <p className="mt-6 max-w-xl text-muted" data-reveal>
         Get USDC onto Arc from another chain, or swap between USDC and EURC — powered by Circle App Kit.
       </p>
 
@@ -52,7 +48,7 @@ export default function WalletPage() {
         ) : (
           <div className="grid gap-12 lg:grid-cols-[1fr_340px]">
             <div>
-              <div role="tablist" className="mb-8 inline-flex rounded-full border border-line p-1">
+              <div role="tablist" data-reveal className="mb-8 inline-flex rounded-full border border-line p-1">
                 {(["swap", "bridge"] as const).map((t) => (
                   <button
                     key={t}
@@ -106,7 +102,7 @@ function Balances() {
   const usdc = useTokenBalance(USDC);
   const eurc = useTokenBalance(net.eurc);
   return (
-    <aside className="flex flex-col justify-between gap-8 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6 lg:aspect-square">
+    <aside data-reveal="card" className="flex flex-col justify-between gap-8 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6 lg:aspect-square">
       <p className="text-[11px] font-medium uppercase tracking-wider">On {chain.name}</p>
       <div className="grid gap-5">
         {[
@@ -114,7 +110,7 @@ function Balances() {
           ["EURC", eurc.data],
         ].map(([name, v]) => (
           <p key={name as string}>
-            <span className="block text-[44px] font-semibold leading-none tracking-[-0.06em]">{v !== undefined ? usd(v as bigint) : "…"}</span>
+            <span className="block text-[44px] font-semibold leading-none tracking-[-0.06em]"><CountUp value={v as bigint | undefined} /></span>
             <span className="text-[11px] font-medium">{name as string}</span>
           </p>
         ))}
@@ -206,7 +202,7 @@ function SwapPanel() {
 
   return (
     <div className="grid max-w-xl gap-1">
-      <div className="rounded-2xl border border-line bg-paper-2 p-4">
+      <div data-reveal className="rounded-2xl border border-line bg-paper-2 p-4">
         <div className="flex items-center justify-between">
           <span className={label}>You pay</span>
           <span className="text-xs text-muted">
@@ -243,7 +239,7 @@ function SwapPanel() {
         <ArrowDownUp size={16} aria-hidden />
       </button>
 
-      <div className="rounded-2xl border border-line bg-paper-2 p-4">
+      <div data-reveal className="rounded-2xl border border-line bg-paper-2 p-4">
         <span className={label}>You receive</span>
         <div className="mt-2 flex items-center gap-3">
           <p className={`w-full font-mono text-3xl tracking-tight ${current ? "" : "text-muted/50"} ${quote.isFetching && !current ? "animate-pulse" : ""}`}>
@@ -259,7 +255,7 @@ function SwapPanel() {
       </button>
 
       {current && (
-        <dl className="mt-4 grid gap-1.5 text-sm">
+        <dl data-reveal className="mt-4 grid gap-1.5 text-sm">
           <Row k="Rate" v={`1 ${tokenIn} ≈ ${rate!.toFixed(4)} ${tokenOut}`} />
           <Row k="Minimum received" v={`${Number(current.stopLimit.amount).toFixed(4)} ${current.stopLimit.token}`} />
           <Row k="Max slippage" v="1%" />
@@ -274,7 +270,7 @@ function SwapPanel() {
       {quote.isError && <p role="alert" className="mt-3 text-sm text-red">{errorText(quote.error)}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-red">{error}</p>}
       {done && (
-        <p className="mt-3 flex items-center gap-2 text-sm">
+        <p data-reveal="pop" className="mt-3 flex items-center gap-2 text-sm">
           <Check size={16} aria-hidden /> Received {done.out} {done.token}.
           {done.url && <ExplorerLink href={done.url} />}
         </p>
@@ -379,7 +375,7 @@ function BridgePanel() {
 
   return (
     <div className="grid max-w-xl gap-6">
-      <label className="grid gap-2">
+      <label className="grid gap-2" data-reveal>
         <span className={label}>From</span>
         <select
           className={field}
@@ -399,7 +395,7 @@ function BridgePanel() {
         </select>
       </label>
 
-      <label className="grid gap-2">
+      <label className="grid gap-2" data-reveal>
         <span className={label}>Amount (USDC)</span>
         <input
           className={`${field} font-mono`}
@@ -420,7 +416,7 @@ function BridgePanel() {
       </label>
 
       {fresh && (
-        <dl className="grid gap-1 border-t border-line pt-4 text-sm">
+        <dl data-reveal className="grid gap-1 border-t border-line pt-4 text-sm">
           <Row k="Route" v={`${source.viem.name} → ${chain.name}`} />
           <Row k="Recipient" v="Your connected wallet" />
           <Row k="Fees" v={fees?.length ? fees.join(" + ") : "Network gas only"} />
@@ -450,7 +446,7 @@ function BridgePanel() {
             return (
               <li key={name} className="flex items-center gap-3">
                 <span className={`grid size-5 place-items-center rounded-full text-[10px] ${s?.state === "success" ? "bg-ink text-paper" : s?.state === "error" ? "bg-red text-red-ink" : "border border-line"}`}>
-                  {s?.state === "success" ? <Check className="size-3" aria-hidden /> : s?.state === "error" ? "!" : ""}
+                  {s?.state === "success" ? <Check data-reveal="pop" className="size-3" aria-hidden /> : s?.state === "error" ? "!" : ""}
                 </span>
                 <span className={s ? "" : "text-muted"}>{text}</span>
                 {s?.url && <ExplorerLink href={s.url} />}
@@ -461,7 +457,7 @@ function BridgePanel() {
       )}
 
       {error && <p role="alert" className="text-sm text-red">{error}</p>}
-      {result?.state === "success" && <p className="flex items-center gap-2 text-sm"><Check className="size-4" aria-hidden /> {result.amount} USDC is on {chain.name}.</p>}
+      {result?.state === "success" && <p data-reveal="pop" className="flex items-center gap-2 text-sm"><Check className="size-4" aria-hidden /> {result.amount} USDC is on {chain.name}.</p>}
     </div>
   );
 }

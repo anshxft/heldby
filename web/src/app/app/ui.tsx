@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown, LogOut, Repeat } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { animate } from "animejs";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain } from "wagmi";
-import { type Status, USDC, errorText, short, usd, usdcAbi } from "@/lib/escrow";
+import { type Status, USDC, errorText, short, usdcAbi } from "@/lib/escrow";
+import { formatUnits } from "viem";
 import { NETWORKS, type NetworkId, explorer } from "@/lib/networks";
 import { setNetwork, useNetwork } from "./network";
 
 export const btn =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-red hover:text-red-ink disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-red hover:text-red-ink active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40";
 export const btnGhost =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full border border-ink/20 px-5 text-sm font-medium transition hover:border-ink disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-full border border-ink/20 px-5 text-sm font-medium transition hover:border-ink active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40";
 export const field =
   "w-full rounded-xl border border-line bg-paper-2 px-4 py-3 text-base outline-none transition placeholder:text-muted/70 focus:border-ink";
 export const label = "text-[11px] font-medium uppercase tracking-wider text-muted";
@@ -95,7 +97,7 @@ export function Wallet() {
   return (
     <details className="group relative">
       <summary className={`${btnGhost} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
-        <span className="font-mono">{balance.data !== undefined ? usd(balance.data) : "…"} USDC</span>
+        <span className="font-mono"><CountUp value={balance.data} /> USDC</span>
         <span className="h-4 w-px bg-line" />
         <span className="font-mono text-muted">{short(address!)}</span>
         <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
@@ -140,7 +142,7 @@ export function NeedsWallet({ children }: { children: React.ReactNode }) {
   if (!net.escrow) return <NotDeployed />;
   if (isConnected && chainId === chain.id) return children;
   return (
-    <div className="flex flex-col items-start gap-5 py-10">
+    <div className="flex flex-col items-start gap-5 py-10" data-reveal>
       <p className="max-w-md text-lg">
         {isConnected ? `Switch your wallet to ${chain.name} to continue.` : "Connect a wallet to see and create escrows."}
       </p>
@@ -161,7 +163,8 @@ const pill: Record<Status, string> = {
 
 export function StatusPill({ status }: { status: Status }) {
   return (
-    <span className={`inline-flex h-7 items-center rounded-full border px-3 text-xs font-medium ${pill[status]}`}>
+    // keyed by status so a change remounts it and pops in
+    <span key={status} data-reveal="pop" className={`inline-flex h-7 items-center rounded-full border px-3 text-xs font-medium ${pill[status]}`}>
       {status}
     </span>
   );
@@ -178,7 +181,7 @@ export function TxLink({ hash }: { hash: string }) {
 
 export function NotDeployed() {
   return (
-    <div className="flex flex-col items-start gap-4 py-10">
+    <div className="flex flex-col items-start gap-4 py-10" data-reveal>
       <p className="max-w-md text-lg">Heldby escrow isn’t live on Arc mainnet yet — it’s coming soon.</p>
       <p className="max-w-md text-sm text-muted">Swap and bridge already work on mainnet from the Wallet page. Switch to Testnet to try escrows now.</p>
       <button className={btnGhost} onClick={() => setNetwork("testnet")}>
@@ -225,4 +228,36 @@ export function NetworkNote() {
       <span>{net.testnet ? "Test funds only" : "Real funds — mainnet"}</span>
     </>
   );
+}
+
+/** Page heading in the landing-page style: each line rises out of its mask (see AppMotion). */
+export function Title({ lines, className = "text-[clamp(44px,7vw,104px)]" }: { lines: string[]; className?: string }) {
+  return (
+    <h1 data-reveal="title" className={`display ${className}`}>
+      {lines.map((l, i) => (
+        <span key={l} className={`line ${i ? "ml-[0.6em]" : ""}`}>
+          <span>{l}</span>
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+/** A 6-decimal token amount that counts up/down to its new value. Text is written by the effect only. */
+export function CountUp({ value }: { value: bigint | undefined }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const shown = useRef(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (value === undefined) return void (el.textContent = "…");
+    const to = Number(formatUnits(value, 6));
+    const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return void (el.textContent = fmt((shown.current = to)));
+    const state = { n: shown.current };
+    shown.current = to;
+    const a = animate(state, { n: to, duration: 1000, ease: "out(3)", onUpdate: () => void (el.textContent = fmt(state.n)) });
+    return () => void a.pause();
+  }, [value]);
+  return <span ref={ref} />;
 }

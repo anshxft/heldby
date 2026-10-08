@@ -7,16 +7,12 @@ import { useConfig, useConnection } from "wagmi";
 import { readContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
 import { USDC, errorText, escrowAbi, usd, usdcAbi } from "@/lib/escrow";
 import { useNetwork } from "../network";
-import { NeedsWallet, btn, field, label, useNow } from "../ui";
+import { NeedsWallet, Title, btn, field, label, useNow } from "../ui";
 
 export default function NewEscrow() {
   return (
     <>
-      <h1 className="display text-[clamp(44px,7vw,104px)]">
-        New
-        <br />
-        <span className="ml-[0.6em]">escrow.</span>
-      </h1>
+      <Title lines={["New", "escrow."]} />
       <div className="mt-14">
         <NeedsWallet>
           <CreateForm />
@@ -104,12 +100,12 @@ function CreateForm() {
   return (
     <form onSubmit={submit} className="grid gap-12 lg:grid-cols-[1fr_340px]">
       <fieldset disabled={busy} className="grid gap-8">
-        <label className="grid gap-2">
+        <label className="grid gap-2" data-reveal>
           <span className={label}>01 · Freelancer wallet</span>
           <input name="freelancer" className={`${field} font-mono`} placeholder="0x…" autoComplete="off" spellCheck={false} required />
         </label>
         <div className="grid gap-8 sm:grid-cols-2">
-          <label className="grid gap-2">
+          <label className="grid gap-2" data-reveal>
             <span className={label}>02 · Amount (USDC)</span>
             <input
               name="amount"
@@ -121,12 +117,12 @@ function CreateForm() {
               required
             />
           </label>
-          <label className="grid gap-2">
+          <label className="grid gap-2" data-reveal>
             <span className={label}>03 · Deadline</span>
             <input name="deadline" type="date" min={tomorrow} className={field} value={date} onChange={(e) => setDate(e.target.value)} required />
           </label>
         </div>
-        <label className="grid gap-2">
+        <label className="grid gap-2" data-reveal>
           <span className={label}>04 · Brief</span>
           <textarea
             name="terms"
@@ -140,7 +136,7 @@ function CreateForm() {
         </label>
       </fieldset>
 
-      <aside className="flex flex-col justify-between gap-8 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6 lg:aspect-square">
+      <aside data-reveal="card" className="flex flex-col justify-between gap-8 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6 lg:aspect-square">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-wider">Summary</p>
           <p className="mt-4 text-[52px] font-semibold leading-none tracking-[-0.06em]">{amount || "0.00"}</p>
