@@ -153,7 +153,9 @@ function SwapPanel() {
   const typed = useDebounced(amount, 400);
 
   const adapter = async () => makeAdapter((await connector!.getProvider()) as EIP1193Provider);
-  const request = (amountIn: string) => ({ tokenIn, tokenOut, amountIn, config: { slippageBps: 100 } });
+  // "approve" = an on-chain approval for exactly this amount, instead of an off-chain permit signature.
+  // Wallets (MetaMask/Blockaid) flag permit signatures from new sites as high-risk; a plain approve reads clearly.
+  const request = (amountIn: string) => ({ tokenIn, tokenOut, amountIn, config: { slippageBps: 100, allowanceStrategy: "approve" as const } });
 
   // live quote: refetches as you type (debounced) and every 15s while visible
   const quote = useQuery({
@@ -264,7 +266,7 @@ function SwapPanel() {
           {fees && <Row k="Fees" v={fees} />}
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
             {quote.isFetching && <Loader2 size={12} className="animate-spin" aria-hidden />}
-            Live price, refreshes every 15s. Routed via a third-party DEX aggregator (currently LiFi; may vary by route) — swapping accepts its terms.
+            Your wallet asks twice: approve exactly {amount} {tokenIn}, then the swap. Live price, refreshes every 15s. Routed via a third-party DEX aggregator (currently LiFi; may vary by route) — swapping accepts its terms.
           </p>
         </dl>
       )}
