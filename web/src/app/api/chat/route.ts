@@ -27,6 +27,19 @@ sad (the user is sad, says bye, or is mean), angry (insults or trying to break t
 const PIP_MOODS = ["happy", "shy", "love", "sad", "angry", "surprised", "idle"] as const;
 type PipMood = (typeof PIP_MOODS)[number];
 
+// The browser only tells us which route it is on; we map that to our own wording, so no client text reaches the prompt.
+function pageContext(page: unknown): string | null {
+  if (typeof page !== "string") return null;
+  if (page === "/") return "the landing page, which explains TrustPay";
+  if (page === "/app") return "their escrows dashboard, listing deals where they are client or freelancer";
+  if (page === "/app/new") return "the New escrow form: fields 01 freelancer wallet, 02 amount (USDC), 03 deadline, 04 brief (the AI agent judges against it); the button is 'Lock funds' and the wallet asks twice (approve USDC, then lock)";
+  if (page === "/app/wallet")
+    return "the Wallet page with two tabs: 'Swap' (type an amount, the quote appears automatically, then press the Swap button; USDC and EURC only) and 'Bridge to Arc' (pick a source chain, 'Check fees', then 'Bridge'; USDC arrives on Arc in ~20s via Circle CCTP)";
+  if (/^\/app\/deal\/\d+$/.test(page))
+    return "a single escrow's page with its status and next-step actions (submit work, release, refund, raise a dispute, ask the AI agent; the client has a 24h review window after submission unless someone disputes)";
+  return null;
+}
+
 const MAX_TURNS = 12;
 const MAX_CHARS = 600;
 
@@ -34,7 +47,7 @@ export async function POST(request: Request) {
   if (crossSite(request)) return forbidden();
   const wait = rateLimit(request, "chat", 20, 60_000); // 20 messages a minute per IP
   if (wait) return tooMany(wait);
-  const body = (await request.json().catch(() => null)) as { messages?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { messages?: unknown; page?: unknown } | null;
   const raw = Array.isArray(body?.messages) ? body.messages : null;
   if (!raw?.length) return Response.json({ error: "Send { messages: [...] }." }, { status: 400 });
 
@@ -46,12 +59,16 @@ export async function POST(request: Request) {
   if (history.at(-1)?.role !== "user") return Response.json({ error: "Last message must be from the user." }, { status: 400 });
 
   try {
-    // the model can drift into Devanagari for Hinglish; a last-position reminder keeps the user's script
+    // A last-position note gets the most attention: which page they're on, and keeping their script
+    // (the model otherwise drifts into Devanagari for Hinglish).
+    const where = pageContext(body?.page);
     const latin = !/[ऀ-ॿ]/.test(history.at(-1)!.content);
-    const script: ChatMessage[] = latin
-      ? [{ role: "system", content: "Write the reply only in English/Latin letters (Hinglish if they wrote Hinglish). No Devanagari." }]
-      : [];
-    const raw = await groqChat([{ role: "system", content: SYSTEM }, ...history, ...script], {
+    const note = [
+      where && `The user is on ${where}. Answer "how/what now" questions for this page.`,
+      latin && "Write the reply only in English/Latin letters (Hinglish if they wrote Hinglish). No Devanagari.",
+    ].filter(Boolean);
+    const tail: ChatMessage[] = note.length ? [{ role: "system", content: note.join(" ") }] : [];
+    const raw = await groqChat([{ role: "system", content: SYSTEM }, ...history, ...tail], {
       model: process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperature: 0.6,
       maxTokens: 800, // gpt-oss spends some of this on hidden reasoning

@@ -2,6 +2,7 @@
 
 import { animate, utils } from "animejs";
 import { ArrowUp, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -35,12 +36,21 @@ export function Pet() {
   const moveTo = useRef<(x: number, y: number) => void>(() => {});
   const react = useRef<(m: Mood, ms: number) => void>(() => {});
   const dragged = useRef(false);
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
 
   const face: Mood = held ? "surprised" : (flash ?? (thinking ? "talk" : hover ? "shy" : near ? "glad" : sleepy ? "sleepy" : "idle"));
 
   useEffect(() => {
     openRef.current = open;
   }, [open]);
+
+  // inside the app Pip keeps to the bottom edge so it never sits on a form; entering it, go home to the corner
+  useEffect(() => {
+    const enteringApp = pathname.startsWith("/app") && !pathRef.current.startsWith("/app");
+    pathRef.current = pathname;
+    if (enteringApp) moveTo.current(vw() - SIZE - 20, vh() - SIZE - 20);
+  }, [pathname]);
 
   // body language that goes with a new face
   useEffect(() => {
@@ -92,11 +102,13 @@ export function Pet() {
     // wander every few seconds unless chatting, held, or the tab is hidden
     let wanderTimer: ReturnType<typeof setTimeout>;
     const wander = () => {
+      const inApp = pathRef.current.startsWith("/app");
       wanderTimer = setTimeout(() => {
-        if (!openRef.current && !reduce && !document.hidden && mode === "free")
-          moveTo.current(rand(16, vw() - SIZE - 16), rand(vh() * 0.3, vh() - SIZE - 16));
+        // app pages: walk along the bottom edge only, and stay put on phones where it would cover buttons
+        const canWander = !openRef.current && !reduce && !document.hidden && mode === "free" && !(inApp && vw() < 640);
+        if (canWander) moveTo.current(rand(16, vw() - SIZE - 16), inApp ? vh() - SIZE - 16 : rand(vh() * 0.3, vh() - SIZE - 16));
         wander();
-      }, rand(3500, 7000));
+      }, inApp ? rand(7000, 12_000) : rand(3500, 7000));
     };
     wander();
 
@@ -121,8 +133,8 @@ export function Pet() {
       const d = Math.hypot(dx, dy) || 1;
       const k = Math.min(4, d / 25);
       const pupils = el.querySelectorAll(".pupil");
-      if (faceRef.current === "shy") utils.set(pupils, { x: -2.5, y: 3 }); // looks away, down
-      else utils.set(pupils, { x: (dx / d) * k, y: (dy / d) * k });
+      // closed-eye faces (sleepy, happy, cry…) have no pupils; animating nothing makes anime.js warn every frame
+      if (pupils.length) utils.set(pupils, faceRef.current === "shy" ? { x: -2.5, y: 3 } : { x: (dx / d) * k, y: (dy / d) * k });
 
       const nowNear = mode === "free" && d < 140;
       if (nowNear !== isNear) {
@@ -138,7 +150,8 @@ export function Pet() {
     let blinkTimer: ReturnType<typeof setTimeout>;
     const blink = () => {
       blinkTimer = setTimeout(() => {
-        animate(el.querySelectorAll(".lid"), { scaleY: [0, 1, 0], duration: 220, ease: "inOut(2)" });
+        const lids = el.querySelectorAll(".lid");
+        if (lids.length) animate(lids, { scaleY: [0, 1, 0], duration: 220, ease: "inOut(2)" });
         blink();
       }, rand(2200, 5000));
     };
@@ -311,7 +324,7 @@ export function Pet() {
           </svg>
         </button>
       </div>
-      {open && <Chat onClose={toggle} onThinking={setThinking} onMood={(m) => react.current(m, 4000)} />}
+      {open && <Chat page={pathname} onClose={toggle} onThinking={setThinking} onMood={(m) => react.current(m, 4000)} />}
     </>
   );
 }
@@ -429,7 +442,7 @@ function Eye({ cx, kind, side }: { cx: number; kind: EyeKind; side: "left" | "ri
 
 // ---------- chat ----------
 
-function Chat({ onClose, onThinking, onMood }: { onClose: () => void; onThinking: (t: boolean) => void; onMood: (m: Mood) => void }) {
+function Chat({ page, onClose, onThinking, onMood }: { page: string; onClose: () => void; onThinking: (t: boolean) => void; onMood: (m: Mood) => void }) {
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -461,7 +474,7 @@ function Chat({ onClose, onThinking, onMood }: { onClose: () => void; onThinking
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next.slice(1) }), // greeting is UI-only
+        body: JSON.stringify({ messages: next.slice(1), page }), // greeting is UI-only
       });
       const data = (await res.json()) as { reply?: string; mood?: Mood; error?: string };
       setMessages((m) => [...m, { role: "assistant", content: data.reply ?? data.error ?? "Hmm, something went wrong." }]);

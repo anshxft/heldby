@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowRight, ArrowUpRight, Zap } from "lucide-react";
 import { Motion } from "@/components/motion";
-import { Pet } from "@/components/pet";
 import { LogoMark } from "@/components/logo";
 
 const heroLines = [
@@ -49,7 +48,6 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-2 p-2 sm:gap-3 sm:p-3">
       <Motion />
-      <Pet />
 
       {/* 01 — Hero */}
       <section className="relative flex min-h-[calc(100svh-16px)] flex-col overflow-hidden rounded-[22px] bg-paper px-5 py-5 sm:min-h-[calc(100svh-24px)] sm:rounded-[28px] sm:px-8 sm:py-7">

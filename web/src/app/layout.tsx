@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
+import { Pet } from "@/components/pet";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -35,7 +37,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Pip reads the URL to know which page it is on; Suspense keeps dynamic routes prerenderable */}
+        <Suspense fallback={null}>
+          <Pet />
+        </Suspense>
+      </body>
     </html>
   );
 }
