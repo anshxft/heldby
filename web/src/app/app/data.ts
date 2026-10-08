@@ -47,7 +47,7 @@ export function useMyDeals() {
   });
 }
 
-export type DealDetail = Deal & { deliverable?: string; dispute?: { by: Address; reason: string }; resolution?: { toFreelancer: bigint; toClient: bigint; reason: string } };
+export type DealDetail = Deal & { deliverable?: string; submittedAt?: number; dispute?: { by: Address; reason: string }; resolution?: { toFreelancer: bigint; toClient: bigint; reason: string } };
 
 export function useDeal(id: bigint) {
   const client = usePublic();
@@ -69,6 +69,7 @@ export function useDeal(id: bigint) {
       return {
         ...toDeal(id, row, created[0]?.args.terms ?? ""),
         deliverable: submitted[0]?.args.deliverable,
+        submittedAt: submitted[0] ? Number((await client.getBlock({ blockNumber: submitted[0].blockNumber })).timestamp) : undefined,
         dispute: d && { by: d.by!, reason: d.reason! },
         resolution: r && { toFreelancer: r.toFreelancer!, toClient: r.toClient!, reason: r.reason! },
       };

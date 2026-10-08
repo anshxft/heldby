@@ -4,6 +4,8 @@ import { arcTestnet } from "viem/chains";
 export const chain = arcTestnet;
 export const ESCROW = "0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8" as const;
 export const DEPLOY_BLOCK = 65975895n;
+/** After work is submitted the client gets this long to release or dispute before the AI agent may settle on its own. */
+export const REVIEW_WINDOW_SECONDS = 24 * 60 * 60;
 // USDC ERC-20 view (6 decimals). Same predeploy on Arc mainnet and testnet.
 export const USDC = "0x3600000000000000000000000000000000000000" as const;
 

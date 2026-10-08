@@ -1,8 +1,9 @@
 import { AgentError, verifyDeal } from "@/lib/agent";
-import { rateLimit, tooMany } from "@/lib/rate-limit";
+import { crossSite, forbidden, rateLimit, tooMany } from "@/lib/guard";
 
 // POST /api/verify { id: "1" } — the AI agent reviews a submitted/disputed escrow and settles it.
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbidden();
   const wait = rateLimit(request, "verify", 5, 60_000); // each call can hit the model and the chain
   if (wait) return tooMany(wait);
   const { id } = (await request.json().catch(() => ({}))) as { id?: unknown };
@@ -11,9 +12,10 @@ export async function POST(request: Request) {
   try {
     return Response.json(await verifyDeal(BigInt(id)));
   } catch (e) {
-    const status = e instanceof AgentError ? e.status : 500;
-    const message = (e as { shortMessage?: string }).shortMessage ?? (e as Error).message;
-    console.error("[agent]", id, message);
-    return Response.json({ error: message }, { status });
+    // full detail goes to server logs; the browser only gets our own messages or viem's one-line summary
+    console.error("[agent]", id, e);
+    if (e instanceof AgentError) return Response.json({ error: e.message }, { status: e.status });
+    const short = (e as { shortMessage?: string }).shortMessage;
+    return Response.json({ error: short ?? "The agent hit an internal error. Try again shortly." }, { status: 500 });
   }
 }

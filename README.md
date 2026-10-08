@@ -28,6 +28,18 @@ The arbiter can only split a deal between its client and freelancer — it can n
 AI runs on [Groq](https://groq.com) with the open-source `openai/gpt-oss-120b` model. Delivery content is treated
 as untrusted data; malformed or uncertain verdicts never move funds.
 
+## Security
+- **Contract**: OpenZeppelin `SafeERC20` + `ReentrancyGuard`; the arbiter can only split a deal between its two parties;
+  late work can't block a refund. 18 Foundry tests incl. a fuzz test that funds are always conserved; Slither clean
+  apart from expected timestamp notes.
+- **Review window**: after work is submitted the client has 24h to release or dispute; a dispute lets the agent act at
+  once, and after 24h of silence the freelancer can ask the agent. Enforced server-side.
+- **Agent**: delivery content is untrusted data (prompt-injection tested); malformed or uncertain verdicts never move
+  funds; link fetching blocks private/local hosts on every redirect hop and caps downloads at 200 KB.
+- **APIs**: per-IP rate limits, cross-site requests refused, internal errors logged server-side only.
+- **Web**: no secrets in client code (`ARBITER_PRIVATE_KEY` / `GROQ_API_KEY` are server-only env vars); clickjacking
+  blocked (`frame-ancestors 'none'`), `nosniff`, HSTS, strict referrer and permissions policies.
+
 ## Deployments
 | Network | Escrow contract |
 |---|---|

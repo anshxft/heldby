@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { Hash } from "viem";
 import { useConfig, useConnection } from "wagmi";
 import { waitForTransactionReceipt, writeContract } from "wagmi/actions";
-import { ESCROW, errorText, escrowAbi, explorer, short, usd } from "@/lib/escrow";
+import { ESCROW, REVIEW_WINDOW_SECONDS, errorText, escrowAbi, explorer, short, usd } from "@/lib/escrow";
 import { type DealDetail, useDeal } from "../../data";
 import { StatusPill, TxLink, btn, btnGhost, field, label, useNow } from "../../ui";
 
@@ -172,6 +172,7 @@ function Actions({ deal }: { deal: DealDetail }) {
   const isFreelancer = address === deal.freelancer;
   const now = useNow();
   const expired = now > 0 && now > deal.deadline;
+  const reviewLeft = deal.submittedAt && now ? deal.submittedAt + REVIEW_WINDOW_SECONDS - now : 0;
   const id = deal.id;
   const call = (functionName: "release" | "refund") =>
     send(functionName, () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName, args: [id] }));
@@ -224,8 +225,14 @@ function Actions({ deal }: { deal: DealDetail }) {
       body = (
         <>
           {isClient && <button className={btn} disabled={!!busy} onClick={() => call("release")}>{label_("release", "Approve & release")}</button>}
-          {!isClient && <p>The client can release payment, or the AI agent can verify the work against the brief.</p>}
-          <AgentButton id={id} />
+          {!isClient && <p>The client can release payment or raise a dispute.</p>}
+          {reviewLeft > 0 ? (
+            <p className="border-t border-red-ink/20 pt-3">
+              Client review window: {formatLeft(reviewLeft)} left. After that the AI agent can settle it — or raise a dispute to ask it now.
+            </p>
+          ) : (
+            <AgentButton id={id} />
+          )}
           {(isClient || isFreelancer) && (
             <>
               <input className={`${field} border-red-ink/20 bg-paper`} placeholder="What’s wrong? (sent to the AI agent)" value={text} onChange={(e) => setText(e.target.value)} />
@@ -340,3 +347,5 @@ function AgentButton({ id }: { id: bigint }) {
     </div>
   );
 }
+
+const formatLeft = (sec: number) => (sec >= 3600 ? `${Math.ceil(sec / 3600)}h` : `${Math.max(1, Math.ceil(sec / 60))}m`);

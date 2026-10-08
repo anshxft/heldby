@@ -1,7 +1,7 @@
 import "server-only";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { DEPLOY_BLOCK, ESCROW, STATUS, chain, escrowAbi } from "./escrow";
+import { DEPLOY_BLOCK, ESCROW, REVIEW_WINDOW_SECONDS, STATUS, chain, escrowAbi } from "./escrow";
 import { groqChat } from "./groq";
 
 const MAX_EVIDENCE = 6_000; // chars of delivery content shown to the model
@@ -38,6 +38,14 @@ export async function verifyDeal(id: bigint): Promise<AgentResult> {
   const brief = created[0]?.args.terms ?? "";
   const deliverable = submitted[0]?.args.deliverable ?? "";
   const dispute = disputed[0]?.args;
+
+  // undisputed work: the client gets the review window first; a dispute lets the agent act immediately
+  if (state === "Submitted" && submitted[0]) {
+    const { timestamp } = await publicClient.getBlock({ blockNumber: submitted[0].blockNumber });
+    const opensAt = Number(timestamp) + REVIEW_WINDOW_SECONDS;
+    if (Date.now() / 1000 < opensAt)
+      throw new AgentError(`The client can review until ${new Date(opensAt * 1000).toUTCString()}. Raise a dispute to ask the agent sooner.`, 409);
+  }
   const client = created[0]?.args.client;
 
   const evidence = await fetchEvidence(deliverable);
@@ -197,7 +205,8 @@ export async function askModel(input: { brief: string; deliverable: string; evid
     ],
     { model: process.env.GROQ_MODEL || "openai/gpt-oss-120b", json: true },
   ).catch((e: Error) => {
-    throw new AgentError(e.message, 502);
+    console.error("[agent] model error:", e.message);
+    throw new AgentError("The AI model is unavailable right now. Try again shortly.", 502);
   });
   return parseVerdict(content);
 }

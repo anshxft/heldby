@@ -20,3 +20,17 @@ export function rateLimit(request: Request, bucket: string, max: number, windowM
 
 export const tooMany = (wait: number) =>
   Response.json({ error: `Too many requests. Try again in ${wait}s.` }, { status: 429, headers: { "Retry-After": String(wait) } });
+
+/** Browsers send Origin on cross-site POSTs; refuse those so other sites can't drive our APIs from a visitor's tab. */
+export function crossSite(request: Request) {
+  if (request.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = request.headers.get("origin");
+  if (!origin) return false; // same-origin GETs and server-to-server calls (still rate limited)
+  try {
+    return new URL(origin).host !== request.headers.get("host");
+  } catch {
+    return true;
+  }
+}
+
+export const forbidden = () => Response.json({ error: "Cross-site requests are not allowed." }, { status: 403 });

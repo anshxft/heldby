@@ -1,5 +1,5 @@
 import { type ChatMessage, groqChat } from "@/lib/groq";
-import { rateLimit, tooMany } from "@/lib/rate-limit";
+import { crossSite, forbidden, rateLimit, tooMany } from "@/lib/guard";
 
 const SYSTEM = `You are Pip, the small, cheerful mascot of TrustPay. You live on the TrustPay website and help visitors understand it.
 
@@ -31,6 +31,7 @@ const MAX_TURNS = 12;
 const MAX_CHARS = 600;
 
 export async function POST(request: Request) {
+  if (crossSite(request)) return forbidden();
   const wait = rateLimit(request, "chat", 20, 60_000); // 20 messages a minute per IP
   if (wait) return tooMany(wait);
   const body = (await request.json().catch(() => null)) as { messages?: unknown } | null;
