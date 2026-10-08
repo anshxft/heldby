@@ -47,13 +47,26 @@ body {
   html.motion .reveal,
   html.motion .line > span,
   html.motion .red-card,
-  html.motion .pop,
+  html.motion .pop {
+    opacity: 0;
+  }
+  /* App pages: hidden until AppMotion reveals them. The 3s fallback animation guarantees content
+     still appears if JS never runs (CSS animations outrank inline styles, so it also ends any stuck state). */
   html.motion [data-reveal] {
     opacity: 0;
+    animation: reveal-fallback 0s 3s forwards;
   }
   /* title lines start below their mask */
   html.motion [data-reveal="title"] .line > span {
     transform: translateY(105%);
+    animation: reveal-fallback 0s 3s forwards;
+  }
+}
+
+@keyframes reveal-fallback {
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

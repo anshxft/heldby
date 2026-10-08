@@ -25,7 +25,9 @@ export function AppMotion() {
     let scheduled = false;
 
     const play = (batch: Revealable[]) => {
-      const by = (kind: string) => batch.filter((el) => (el.dataset.reveal || "up") === kind);
+      // a bare `data-reveal` renders as "true" in React, so anything that isn't a named kind is "up"
+      const kindOf = (el: Revealable) => (["title", "card", "bar", "pop"].includes(el.dataset.reveal ?? "") ? el.dataset.reveal : "up");
+      const by = (kind: string) => batch.filter((el) => kindOf(el) === kind);
       const ease = "out(4)";
 
       for (const el of by("title")) {
