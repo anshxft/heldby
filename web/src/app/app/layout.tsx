@@ -14,6 +14,7 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
             <nav className="hidden gap-5 text-[13px] font-medium sm:flex">
               <Link href="/app" className="link">Escrows</Link>
               <Link href="/app/new" className="link">New escrow</Link>
+              <Link href="/app/wallet" className="link">Wallet</Link>
             </nav>
           </div>
           <Wallet />

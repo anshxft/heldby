@@ -63,7 +63,7 @@ function CreateForm() {
     try {
       const owner = address as Address;
       const balance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "balanceOf", args: [owner] });
-      if (balance < value) return setError(`Not enough USDC. You have ${usd(balance)}.`);
+      if (balance < value) return setError(`Not enough USDC. You have ${usd(balance)} — bridge some in on the Wallet page.`);
 
       const allowance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "allowance", args: [owner, ESCROW] });
       if (allowance < value) {
