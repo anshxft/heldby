@@ -196,7 +196,8 @@ export async function askModel(input: { brief: string; deliverable: string; evid
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
-    { model: process.env.GROQ_MODEL || "openai/gpt-oss-120b", json: true },
+    // on a rate limit (shared ~8k tokens/min) fall back to the smaller model rather than fail the verdict
+    { model: process.env.GROQ_MODEL || "openai/gpt-oss-120b", fallbackModel: "openai/gpt-oss-20b", json: true },
   ).catch((e: Error) => {
     console.error("[agent] model error:", e.message);
     throw new AgentError("The AI model is unavailable right now. Try again shortly.", 502);
