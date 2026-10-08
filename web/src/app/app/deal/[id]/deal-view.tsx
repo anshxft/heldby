@@ -3,16 +3,27 @@
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowUpRight, Bot, Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Hash } from "viem";
 import { useConfig, useConnection } from "wagmi";
 import { waitForTransactionReceipt, writeContract } from "wagmi/actions";
-import { ESCROW, REVIEW_WINDOW_SECONDS, errorText, escrowAbi, explorer, short, usd } from "@/lib/escrow";
+import { REVIEW_WINDOW_SECONDS, errorText, escrowAbi, short, usd } from "@/lib/escrow";
+import { explorer, isNetworkId } from "@/lib/networks";
+import { setNetwork, useNetwork } from "../../network";
 import { type DealDetail, useDeal } from "../../data";
-import { StatusPill, TxLink, btn, btnGhost, field, label, useNow } from "../../ui";
+import { NotDeployed, StatusPill, TxLink, btn, btnGhost, field, label, useNow } from "../../ui";
 
 export function DealView({ id }: { id: string }) {
+  const net = useNetwork();
   const { data: deal, isPending, error } = useDeal(BigInt(id));
+
+  // shared links carry ?net=mainnet|testnet so the recipient lands on the right network
+  useEffect(() => {
+    const wanted = new URLSearchParams(location.search).get("net");
+    if (isNetworkId(wanted)) setNetwork(wanted);
+  }, []);
+
+  if (!net.escrow) return <NotDeployed />;
 
   if (isPending) return <p className="text-muted">Loading escrow…</p>;
   if (error) return <p className="text-red">Couldn’t load escrow: {error.message}</p>;
@@ -78,6 +89,7 @@ function Timeline({ deal }: { deal: DealDetail }) {
 
 function Details({ deal }: { deal: DealDetail }) {
   const { address } = useConnection();
+  const net = useNetwork();
   const you = (a: string) => (a === address ? " (you)" : "");
   const left = deal.deadline - useNow();
   const rows: [string, React.ReactNode][] = [
@@ -91,7 +103,7 @@ function Details({ deal }: { deal: DealDetail }) {
         <span className="text-muted"> · {left > 0 ? `${Math.ceil(left / 86400)} day(s) left` : "passed"}</span>
       </span>,
     ],
-    ["Contract", <AddressLink key="x" a={ESCROW} />],
+    ["Contract", <AddressLink key="x" a={net.escrow!} />],
   ];
   return (
     <dl className="border-b border-line">
@@ -106,8 +118,9 @@ function Details({ deal }: { deal: DealDetail }) {
 }
 
 function AddressLink({ a, suffix = "" }: { a: string; suffix?: string }) {
+  const net = useNetwork();
   return (
-    <a href={explorer(`address/${a}`)} target="_blank" className="link inline-flex items-center gap-0.5 font-mono">
+    <a href={explorer(net, `address/${a}`)} target="_blank" className="link inline-flex items-center gap-0.5 font-mono">
       {short(a)}
       {suffix} <ArrowUpRight className="size-3" aria-hidden />
     </a>
@@ -164,6 +177,8 @@ function useTx() {
 
 function Actions({ deal }: { deal: DealDetail }) {
   const { address } = useConnection();
+  const net = useNetwork();
+  const ESCROW = net.escrow!;
   const { config, busy, error, hash, send } = useTx();
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -175,10 +190,10 @@ function Actions({ deal }: { deal: DealDetail }) {
   const reviewLeft = deal.submittedAt && now ? deal.submittedAt + REVIEW_WINDOW_SECONDS - now : 0;
   const id = deal.id;
   const call = (functionName: "release" | "refund") =>
-    send(functionName, () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName, args: [id] }));
+    send(functionName, () => writeContract(config, { address: ESCROW, chainId: net.chain.id, abi: escrowAbi, functionName, args: [id] }));
   // text input is shared by submit and dispute, so clear it once a tx lands
   const withText = async (name: string, functionName: "submitWork" | "dispute") => {
-    if (await send(name, () => writeContract(config, { address: ESCROW, abi: escrowAbi, functionName, args: [id, text.trim()] }))) setText("");
+    if (await send(name, () => writeContract(config, { address: ESCROW, chainId: net.chain.id, abi: escrowAbi, functionName, args: [id, text.trim()] }))) setText("");
   };
   const submit = () => withText("submit", "submitWork");
   const dispute = () => withText("dispute", "dispute");
@@ -210,7 +225,7 @@ function Actions({ deal }: { deal: DealDetail }) {
             <p>Send this page to your freelancer so they can submit the work.</p>
             <button
               className={btnGhost}
-              onClick={() => navigator.clipboard.writeText(location.href).then(() => setCopied(true))}
+              onClick={() => navigator.clipboard.writeText(`${location.origin}${location.pathname}?net=${net.id}`).then(() => setCopied(true))}
             >
               {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} {copied ? "Link copied" : "Copy link"}
             </button>
@@ -299,6 +314,7 @@ type AgentReply = {
 
 /** Asks the server-side agent to review this escrow; shows its reasoning, then refreshes the deal. */
 function AgentButton({ id }: { id: bigint }) {
+  const net = useNetwork();
   const qc = useQueryClient();
   const [state, setState] = useState<"idle" | "busy">("idle");
   const [reply, setReply] = useState<AgentReply>();
@@ -307,7 +323,7 @@ function AgentButton({ id }: { id: bigint }) {
     setState("busy");
     setReply(undefined);
     try {
-      const res = await fetch("/api/verify", { method: "POST", body: JSON.stringify({ id: id.toString() }) });
+      const res = await fetch("/api/verify", { method: "POST", body: JSON.stringify({ id: id.toString(), network: net.id }) });
       const data = (await res.json()) as AgentReply;
       setReply(res.ok ? data : { ...data, verdict: "unclear", freelancerPercent: 0, reason: "", checks: [] });
       if (data.tx) await qc.invalidateQueries();

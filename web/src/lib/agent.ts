@@ -1,8 +1,9 @@
 import "server-only";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { DEPLOY_BLOCK, ESCROW, REVIEW_WINDOW_SECONDS, STATUS, chain, escrowAbi } from "./escrow";
+import { REVIEW_WINDOW_SECONDS, STATUS, escrowAbi } from "./escrow";
 import { groqChat } from "./groq";
+import type { Network } from "./networks";
 
 const MAX_EVIDENCE = 6_000; // chars of delivery content shown to the model
 
@@ -21,15 +22,16 @@ export class AgentError extends Error {
   }
 }
 
-const publicClient = createPublicClient({ chain, transport: http() });
-
 /** Read the deal, inspect the delivery, ask the model, and settle on-chain unless the verdict is unclear. */
-export async function verifyDeal(id: bigint): Promise<AgentResult> {
+export async function verifyDeal(id: bigint, net: Network): Promise<AgentResult> {
+  if (!net.escrow) throw new AgentError(`TrustPay isn't deployed on ${net.chain.name} yet.`, 400);
+  const ESCROW = net.escrow;
+  const publicClient = createPublicClient({ chain: net.chain, transport: http() });
   const [, , , , status] = await publicClient.readContract({ address: ESCROW, abi: escrowAbi, functionName: "deals", args: [id] });
   const state = STATUS[status];
   if (state !== "Submitted" && state !== "Disputed") throw new AgentError(`Escrow is ${state}; the agent only reviews submitted or disputed work.`, 409);
 
-  const base = { address: ESCROW, abi: escrowAbi, fromBlock: DEPLOY_BLOCK, args: { id } } as const;
+  const base = { address: ESCROW, abi: escrowAbi, fromBlock: net.deployBlock, args: { id } } as const;
   const [created, submitted, disputed] = await Promise.all([
     publicClient.getContractEvents({ ...base, eventName: "DealCreated" }),
     publicClient.getContractEvents({ ...base, eventName: "WorkSubmitted" }),
@@ -57,15 +59,15 @@ export async function verifyDeal(id: bigint): Promise<AgentResult> {
   });
   if (v.verdict === "unclear") return { ...v, evidence };
 
-  const tx = await settle(id, v);
+  const tx = await settle(id, v, net, publicClient);
   return { ...v, evidence, tx };
 }
 
-async function settle(id: bigint, v: Verdict) {
+async function settle(id: bigint, v: Verdict, net: Network, publicClient: ReturnType<typeof createPublicClient>) {
   const key = process.env.ARBITER_PRIVATE_KEY as `0x${string}` | undefined;
   if (!key) throw new AgentError("ARBITER_PRIVATE_KEY is not set on the server.", 500);
   const account = privateKeyToAccount(key);
-  const wallet = createWalletClient({ account, chain, transport: http() });
+  const wallet = createWalletClient({ account, chain: net.chain, transport: http() });
 
   // stored on-chain, so keep it short: summary plus a compact checklist
   const checklist = v.checks.map((c) => `${c.met ? "✓" : "✗"} ${c.item}`).join(" · ");
@@ -75,7 +77,7 @@ async function settle(id: bigint, v: Verdict) {
   // simulate first so a race (someone settled it a second ago) fails before spending gas
   const { request } = await publicClient.simulateContract({
     account,
-    address: ESCROW,
+    address: net.escrow!,
     abi: escrowAbi,
     functionName: "resolve",
     args: [id, bps, reason],

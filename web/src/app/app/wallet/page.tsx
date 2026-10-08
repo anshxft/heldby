@@ -7,18 +7,21 @@ import { ArrowDownUp, ArrowUpRight, Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type EIP1193Provider, formatUnits, parseUnits } from "viem";
 import { useConnection, useReadContract, useSwitchChain } from "wagmi";
-import { ARC_KIT, BRIDGE_SOURCES, EURC, IS_TESTNET, SWAP_TOKENS, type SwapToken, isAmount } from "@/lib/circle";
-import { USDC, chain, errorText, usd, usdcAbi } from "@/lib/escrow";
+import { SWAP_TOKENS, type SwapToken, isAmount } from "@/lib/circle";
+import type { Network } from "@/lib/networks";
+import { useNetwork } from "../network";
+import { USDC, errorText, usd, usdcAbi } from "@/lib/escrow";
 import { Wallet, btn, btnGhost, field, label } from "../ui";
 
 // One App Kit for swap + bridge. Keyless: a kit key must never reach the browser.
 let kit: AppKit | undefined;
 const getKit = () => (kit ??= new AppKit());
 
-const TOKEN_ADDRESS: Record<SwapToken, `0x${string}`> = { USDC, EURC };
+const tokenAddress = (net: Network, t: SwapToken) => (t === "USDC" ? USDC : net.eurc);
 
 export default function WalletPage() {
   const { isConnected } = useConnection();
+  const net = useNetwork();
   const [tab, setTab] = useState<"swap" | "bridge">("swap");
 
   return (
@@ -32,7 +35,7 @@ export default function WalletPage() {
         Get USDC onto Arc from another chain, or swap between USDC and EURC — powered by Circle App Kit.
       </p>
 
-      {!IS_TESTNET && (
+      {!net.testnet && (
         <p role="note" className="mt-6 max-w-xl border-l-2 border-red pl-3 text-sm">
           Mainnet: these actions move real funds. Start with a small amount.
         </p>
@@ -60,7 +63,7 @@ export default function WalletPage() {
                   </button>
                 ))}
               </div>
-              {tab === "swap" ? <SwapPanel /> : <BridgePanel />}
+              {tab === "swap" ? <SwapPanel key={net.id} /> : <BridgePanel key={net.id} />}
             </div>
             <Balances />
           </div>
@@ -83,6 +86,7 @@ function useAdapter() {
 }
 
 function useTokenBalance(token: `0x${string}`) {
+  const { chain } = useNetwork();
   const { address } = useConnection();
   return useReadContract({
     address: token,
@@ -95,8 +99,10 @@ function useTokenBalance(token: `0x${string}`) {
 }
 
 function Balances() {
+  const net = useNetwork();
+  const { chain } = net;
   const usdc = useTokenBalance(USDC);
-  const eurc = useTokenBalance(EURC);
+  const eurc = useTokenBalance(net.eurc);
   return (
     <aside className="flex flex-col justify-between gap-8 self-start bg-red p-6 text-red-ink lg:sticky lg:top-6 lg:aspect-square">
       <p className="text-[11px] font-medium uppercase tracking-wider">On {chain.name}</p>
@@ -137,7 +143,9 @@ function SwapPanel() {
   const [swapping, setSwapping] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ out: string; token: string; url?: string } | null>(null);
-  const balanceIn = useTokenBalance(TOKEN_ADDRESS[tokenIn]);
+  const net = useNetwork();
+  const { chain } = net;
+  const balanceIn = useTokenBalance(tokenAddress(net, tokenIn));
   const tokenOut = SWAP_TOKENS.find((t) => t !== tokenIn)!;
   const onArc = chainId === chain.id;
   const typed = useDebounced(amount, 400);
@@ -147,11 +155,11 @@ function SwapPanel() {
 
   // live quote: refetches as you type (debounced) and every 15s while visible
   const quote = useQuery({
-    queryKey: ["swap-quote", tokenIn, typed, address],
+    queryKey: ["swap-quote", net.id, tokenIn, typed, address],
     enabled: isAmount(typed) && onArc && !!connector,
     refetchInterval: 15_000,
     retry: 1,
-    queryFn: async () => getKit().estimateSwap({ from: { adapter: await adapter(), chain: ARC_KIT }, ...request(typed) }),
+    queryFn: async () => getKit().estimateSwap({ from: { adapter: await adapter(), chain: net.kit }, ...request(typed) }),
   });
 
   const balance = balanceIn.data;
@@ -164,7 +172,7 @@ function SwapPanel() {
     setError("");
     setDone(null);
     try {
-      const result = await getKit().swap({ from: { adapter: await adapter(), chain: ARC_KIT }, ...request(amount) });
+      const result = await getKit().swap({ from: { adapter: await adapter(), chain: net.kit }, ...request(amount) });
       setDone({ out: result.amountOut ?? current?.estimatedOutput.amount ?? "", token: tokenOut, url: result.explorerUrl });
       setAmount("");
       await qc.invalidateQueries();
@@ -289,7 +297,7 @@ const STEPS: { name: StepName; label: string }[] = [
   { name: "approve", label: "Approve USDC" },
   { name: "burn", label: "Burn on source chain" },
   { name: "fetchAttestation", label: "Circle attestation" },
-  { name: "mint", label: `Mint on ${chain.name}` },
+  { name: "mint", label: "Mint on Arc" },
 ];
 type BridgeResult = Awaited<ReturnType<AppKit["bridge"]>>;
 type Estimate = Awaited<ReturnType<AppKit["estimateBridge"]>>;
@@ -298,7 +306,9 @@ function BridgePanel() {
   const { address } = useConnection();
   const getAdapter = useAdapter();
   const qc = useQueryClient();
-  const [source, setSource] = useState(BRIDGE_SOURCES[0]);
+  const net = useNetwork();
+  const { chain } = net;
+  const [source, setSource] = useState(net.bridgeSources[0]);
   const [amount, setAmount] = useState("");
   const [estimate, setEstimate] = useState<{ value: Estimate; key: string } | null>(null);
   const [busy, setBusy] = useState<"estimate" | "bridge" | null>(null);
@@ -312,7 +322,7 @@ function BridgePanel() {
   // Circle's Forwarding Service mints on Arc for us, so the user only signs on the source chain
   const params = (adapter: Awaited<ReturnType<ReturnType<typeof useAdapter>>>) => ({
     from: { adapter, chain: source.kit },
-    to: { recipientAddress: address!, chain: ARC_KIT, useForwarder: true as const },
+    to: { recipientAddress: address!, chain: net.kit, useForwarder: true as const },
     amount,
   });
 
@@ -372,12 +382,12 @@ function BridgePanel() {
           value={source.kit}
           disabled={!!busy}
           onChange={(e) => {
-            setSource(BRIDGE_SOURCES.find((s) => s.kit === e.target.value)!);
+            setSource(net.bridgeSources.find((s) => s.kit === e.target.value)!);
             setResult(null);
             setSteps({});
           }}
         >
-          {BRIDGE_SOURCES.map((s) => (
+          {net.bridgeSources.map((s) => (
             <option key={s.kit} value={s.kit}>
               {s.viem.name}
             </option>

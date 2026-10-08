@@ -4,7 +4,9 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronDown, LogOut, Repeat } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain } from "wagmi";
-import { type Status, USDC, chain, errorText, short, usd, usdcAbi } from "@/lib/escrow";
+import { type Status, USDC, errorText, short, usd, usdcAbi } from "@/lib/escrow";
+import { NETWORKS, type NetworkId, explorer } from "@/lib/networks";
+import { setNetwork, useNetwork } from "./network";
 
 export const btn =
   "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-red hover:text-red-ink disabled:pointer-events-none disabled:opacity-40";
@@ -34,11 +36,13 @@ export function Wallet() {
   const connect = useConnect();
   const disconnect = useDisconnect();
   const switchChain = useSwitchChain();
+  const { chain } = useNetwork();
   const balance = useReadContract({
     address: USDC,
     abi: usdcAbi,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: chain.id,
     query: { enabled: !!address, refetchInterval: 10_000 },
   });
 
@@ -128,9 +132,12 @@ export function Wallet() {
   );
 }
 
-/** Gate for pages that need a connected wallet on the right chain. */
+/** Gate for escrow pages: the contract must exist on this network and the wallet must be on it. */
 export function NeedsWallet({ children }: { children: React.ReactNode }) {
   const { isConnected, chainId } = useConnection();
+  const net = useNetwork();
+  const { chain } = net;
+  if (!net.escrow) return <NotDeployed />;
   if (isConnected && chainId === chain.id) return children;
   return (
     <div className="flex flex-col items-start gap-5 py-10">
@@ -161,9 +168,61 @@ export function StatusPill({ status }: { status: Status }) {
 }
 
 export function TxLink({ hash }: { hash: string }) {
+  const net = useNetwork();
   return (
-    <Link href={`${chain.blockExplorers.default.url}/tx/${hash}`} target="_blank" className="link inline-flex items-center gap-0.5 font-mono text-xs">
+    <Link href={explorer(net, `tx/${hash}`)} target="_blank" className="link inline-flex items-center gap-0.5 font-mono text-xs">
       {short(hash)} <ArrowUpRight className="size-3" aria-hidden />
     </Link>
+  );
+}
+
+export function NotDeployed() {
+  return (
+    <div className="flex flex-col items-start gap-4 py-10">
+      <p className="max-w-md text-lg">TrustPay escrow isn’t live on Arc mainnet yet — it’s coming soon.</p>
+      <p className="max-w-md text-sm text-muted">Swap and bridge already work on mainnet from the Wallet page. Switch to Testnet to try escrows now.</p>
+      <button className={btnGhost} onClick={() => setNetwork("testnet")}>
+        Switch to Testnet
+      </button>
+    </div>
+  );
+}
+
+/** Testnet | Mainnet toggle. Also moves a connected wallet to the chosen Arc network. */
+export function NetworkSwitch() {
+  const net = useNetwork();
+  const { isConnected } = useConnection();
+  const switchChain = useSwitchChain();
+  const pick = (id: NetworkId) => {
+    if (id === net.id) return;
+    setNetwork(id);
+    if (isConnected) switchChain.mutate({ chainId: NETWORKS[id].chain.id });
+  };
+  return (
+    <div role="radiogroup" aria-label="Network" className="inline-flex rounded-full border border-line p-0.5 text-xs font-medium">
+      {(["testnet", "mainnet"] as const).map((id) => (
+        <button
+          key={id}
+          role="radio"
+          aria-checked={net.id === id}
+          onClick={() => pick(id)}
+          className={`flex h-8 items-center gap-1.5 rounded-full px-3 transition ${net.id === id ? (id === "mainnet" ? "bg-red text-red-ink" : "bg-ink text-paper") : "text-muted hover:text-ink"}`}
+        >
+          <span className={`size-1.5 rounded-full ${id === "mainnet" ? "bg-current" : "border border-current"}`} aria-hidden />
+          {NETWORKS[id].label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Footer line that follows the selected network. */
+export function NetworkNote() {
+  const net = useNetwork();
+  return (
+    <>
+      <span>TrustPay · {net.chain.name}</span>
+      <span>{net.testnet ? "Test funds only" : "Real funds — mainnet"}</span>
+    </>
   );
 }

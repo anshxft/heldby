@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Providers } from "./providers";
-import { Wallet } from "./ui";
+import { NetworkNote, NetworkSwitch, Wallet } from "./ui";
 
 export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (
@@ -17,12 +17,14 @@ export default function AppLayout({ children }: LayoutProps<"/app">) {
               <Link href="/app/wallet" className="link">Wallet</Link>
             </nav>
           </div>
-          <Wallet />
+          <div className="flex items-center gap-3">
+            <NetworkSwitch />
+            <Wallet />
+          </div>
         </header>
         <main className="flex-1 rounded-[22px] bg-paper px-5 py-10 sm:rounded-[28px] sm:px-8 sm:py-14">{children}</main>
         <footer className="flex justify-between px-3 py-1 text-[11px] text-paper/40">
-          <span>TrustPay · Arc Testnet</span>
-          <span>Test funds only</span>
+          <NetworkNote />
         </footer>
       </div>
     </Providers>

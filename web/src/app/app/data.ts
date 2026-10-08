@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useConnection, usePublicClient } from "wagmi";
-import { DEPLOY_BLOCK, ESCROW, STATUS, type Status, escrowAbi } from "@/lib/escrow";
+import { STATUS, type Status, escrowAbi } from "@/lib/escrow";
+import { useNetwork } from "./network";
 
 export type Deal = {
   id: bigint;
@@ -15,22 +16,24 @@ export type Deal = {
   terms: string;
 };
 
-const base = { address: ESCROW, abi: escrowAbi, fromBlock: DEPLOY_BLOCK } as const;
-
 // ponytail: reads logs from the deploy block on every load; add an indexer if deal count grows large.
-function usePublic() {
-  const client = usePublicClient();
+/** Public client + escrow address for the selected network. Only used under NeedsWallet / when escrow exists. */
+function useEscrow() {
+  const net = useNetwork();
+  const client = usePublicClient({ chainId: net.chain.id });
   if (!client) throw new Error("wagmi public client missing");
-  return client;
+  const address = net.escrow ?? "0x0000000000000000000000000000000000000000";
+  return { net, client, address, base: { address, abi: escrowAbi, fromBlock: net.deployBlock } as const };
 }
 
 /** Deals where the connected wallet is client or freelancer, newest first. */
 export function useMyDeals() {
-  const { address } = useConnection();
-  const client = usePublic();
+  const { address: me } = useConnection();
+  const { net, client, address: ESCROW, base } = useEscrow();
+  const address = me;
   return useQuery({
-    queryKey: ["deals", address],
-    enabled: !!address,
+    queryKey: ["deals", net.id, address],
+    enabled: !!address && !!net.escrow,
     refetchInterval: 15_000,
     queryFn: async (): Promise<Deal[]> => {
       const [mine, forMe] = await Promise.all([
@@ -50,9 +53,10 @@ export function useMyDeals() {
 export type DealDetail = Deal & { deliverable?: string; submittedAt?: number; dispute?: { by: Address; reason: string }; resolution?: { toFreelancer: bigint; toClient: bigint; reason: string } };
 
 export function useDeal(id: bigint) {
-  const client = usePublic();
+  const { net, client, address: ESCROW, base } = useEscrow();
   return useQuery({
-    queryKey: ["deal", id.toString()],
+    queryKey: ["deal", net.id, id.toString()],
+    enabled: !!net.escrow,
     refetchInterval: 10_000,
     queryFn: async (): Promise<DealDetail | null> => {
       const args = { id };

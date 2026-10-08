@@ -1,9 +1,6 @@
 import { formatUnits, parseAbi } from "viem";
-import { arcTestnet } from "viem/chains";
 
-export const chain = arcTestnet;
-export const ESCROW = "0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8" as const;
-export const DEPLOY_BLOCK = 65975895n;
+// Network-specific values (chain, escrow address, deploy block) live in ./networks.ts.
 /** After work is submitted the client gets this long to release or dispute before the AI agent may settle on its own. */
 export const REVIEW_WINDOW_SECONDS = 24 * 60 * 60;
 // USDC ERC-20 view (6 decimals). Same predeploy on Arc mainnet and testnet.
@@ -41,7 +38,6 @@ export type Status = (typeof STATUS)[number];
 
 export const usd = (v: bigint) => Number(formatUnits(v, 6)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-export const explorer = (path: string) => `${chain.blockExplorers.default.url}/${path}`;
 
 export function errorText(e: unknown) {
   const err = e as { shortMessage?: string; message?: string };

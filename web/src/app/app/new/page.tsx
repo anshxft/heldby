@@ -5,7 +5,8 @@ import { useState } from "react";
 import { type Address, isAddress, parseEventLogs, parseUnits } from "viem";
 import { useConfig, useConnection } from "wagmi";
 import { readContract, waitForTransactionReceipt, writeContract } from "wagmi/actions";
-import { ESCROW, USDC, errorText, escrowAbi, usd, usdcAbi } from "@/lib/escrow";
+import { USDC, errorText, escrowAbi, usd, usdcAbi } from "@/lib/escrow";
+import { useNetwork } from "../network";
 import { NeedsWallet, btn, field, label, useNow } from "../ui";
 
 export default function NewEscrow() {
@@ -30,6 +31,9 @@ type Step = "idle" | "approve" | "create";
 function CreateForm() {
   const router = useRouter();
   const config = useConfig();
+  const net = useNetwork();
+  const ESCROW = net.escrow!; // NeedsWallet only renders this form when the escrow exists
+  const chainId = net.chain.id; // pin every read/write to the selected network
   const { address } = useConnection();
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
@@ -62,19 +66,20 @@ function CreateForm() {
 
     try {
       const owner = address as Address;
-      const balance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "balanceOf", args: [owner] });
+      const balance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "balanceOf", args: [owner], chainId });
       if (balance < value) return setError(`Not enough USDC. You have ${usd(balance)} — bridge some in on the Wallet page.`);
 
-      const allowance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "allowance", args: [owner, ESCROW] });
+      const allowance = await readContract(config, { address: USDC, abi: usdcAbi, functionName: "allowance", args: [owner, ESCROW], chainId });
       if (allowance < value) {
         setStep("approve");
-        const hash = await writeContract(config, { address: USDC, abi: usdcAbi, functionName: "approve", args: [ESCROW, value] });
+        const hash = await writeContract(config, { address: USDC, abi: usdcAbi, functionName: "approve", args: [ESCROW, value], chainId });
         await confirm(hash);
       }
 
       setStep("create");
       const hash = await writeContract(config, {
         address: ESCROW,
+        chainId,
         abi: escrowAbi,
         functionName: "createDeal",
         args: [freelancer, value, deadline, terms],
@@ -89,7 +94,7 @@ function CreateForm() {
   }
 
   async function confirm(hash: `0x${string}`) {
-    const receipt = await waitForTransactionReceipt(config, { hash });
+    const receipt = await waitForTransactionReceipt(config, { hash, chainId });
     if (receipt.status !== "success") throw new Error("Transaction reverted on-chain.");
     return receipt;
   }

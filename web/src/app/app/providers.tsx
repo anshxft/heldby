@@ -2,18 +2,14 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import type { Chain } from "viem";
 import { WagmiProvider, createConfig, http, injected } from "wagmi";
-import { BRIDGE_SOURCES } from "@/lib/circle";
-import { chain } from "@/lib/escrow";
+import { ALL_CHAINS } from "@/lib/networks";
 
-// Arc first; bridge source chains are listed so the wallet can be switched to them before a bridge.
-const chains = [chain, ...BRIDGE_SOURCES.map((s) => s.viem)] as [Chain, ...Chain[]];
-
+// Both Arc networks plus every bridge source, so the wallet can be switched to any of them.
 const config = createConfig({
-  chains,
+  chains: ALL_CHAINS,
   connectors: [injected()],
-  transports: Object.fromEntries(chains.map((c) => [c.id, http()])),
+  transports: Object.fromEntries(ALL_CHAINS.map((c) => [c.id, http()])),
   ssr: true,
 });
 
