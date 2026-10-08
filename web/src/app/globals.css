@@ -45,28 +45,11 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   html.motion .reveal,
-  html.motion .line > span,
+  /* landing headlines only — app titles ([data-reveal="title"]) animate with CSS below */
+  html.motion :not([data-reveal="title"]) > .line > span,
   html.motion .red-card,
   html.motion .pop {
     opacity: 0;
-  }
-  /* App pages: hidden until AppMotion reveals them. The 3s fallback animation guarantees content
-     still appears if JS never runs (CSS animations outrank inline styles, so it also ends any stuck state). */
-  html.motion [data-reveal] {
-    opacity: 0;
-    animation: reveal-fallback 0s 3s forwards;
-  }
-  /* title lines start below their mask */
-  html.motion [data-reveal="title"] .line > span {
-    transform: translateY(105%);
-    animation: reveal-fallback 0s 3s forwards;
-  }
-}
-
-@keyframes reveal-fallback {
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -112,4 +95,50 @@ body {
 .pip-beat { animation: pip-beat 0.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @media (prefers-reduced-motion: reduce) {
   .pip-tear, .pip-float, .pip-beat { animation: none; }
+}
+
+/* App pages: pure-CSS entrances, so they run from the first paint (no waiting for hydration) and
+   replay whenever React inserts a new node (data arriving, status changes, route changes).
+   Fill mode is backwards only, so hover/active transforms work normally once an entrance ends.
+   --i (set inline) staggers rows within a list. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    animation: rv-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(80ms + var(--i, 0) * 50ms);
+  }
+  [data-reveal="title"] {
+    animation: none;
+  }
+  [data-reveal="title"] .line > span {
+    animation: rv-line 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  [data-reveal="title"] .line:nth-child(2) > span {
+    animation-delay: 90ms;
+  }
+  [data-reveal="card"] {
+    animation: rv-card 0.85s cubic-bezier(0.76, 0, 0.24, 1) 0.15s backwards;
+  }
+  [data-reveal="bar"] {
+    transform-origin: left;
+    animation: rv-bar 0.9s cubic-bezier(0.65, 0, 0.35, 1) backwards;
+    animation-delay: calc(200ms + var(--i, 0) * 120ms);
+  }
+  [data-reveal="pop"] {
+    animation: rv-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  }
+}
+@keyframes rv-up {
+  from { opacity: 0; translate: 0 18px; }
+}
+@keyframes rv-line {
+  from { transform: translateY(105%); }
+}
+@keyframes rv-card {
+  from { clip-path: inset(0 0 100% 0); }
+}
+@keyframes rv-bar {
+  from { scale: 0 1; }
+}
+@keyframes rv-pop {
+  from { opacity: 0; scale: 0.6; }
 }

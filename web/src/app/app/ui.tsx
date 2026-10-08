@@ -230,7 +230,7 @@ export function NetworkNote() {
   );
 }
 
-/** Page heading in the landing-page style: each line rises out of its mask (see AppMotion). */
+/** Page heading in the landing-page style: each line rises out of its mask (CSS in globals.css). */
 export function Title({ lines, className = "text-[clamp(44px,7vw,104px)]" }: { lines: string[]; className?: string }) {
   return (
     <h1 data-reveal="title" className={`display ${className}`}>

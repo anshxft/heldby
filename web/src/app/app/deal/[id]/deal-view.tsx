@@ -79,9 +79,9 @@ function Timeline({ deal }: { deal: DealDetail }) {
     <ol className="mt-12 grid grid-cols-4 gap-1">
       {steps.map((s, i) => (
         <li key={s}>
-          {/* grey track; the red fill mounts when a step is reached, so it grows in (see AppMotion "bar") */}
+          {/* grey track; the red fill mounts when a step is reached, so it grows in (CSS "bar" entrance) */}
           <span className="relative block h-1 bg-line">
-            {i < reached && <span data-reveal="bar" className="absolute inset-0 origin-left bg-red" />}
+            {i < reached && <span data-reveal="bar" style={{ "--i": i } as React.CSSProperties} className="absolute inset-0 origin-left bg-red" />}
           </span>
           <span className={`mt-2 block text-[11px] font-medium uppercase tracking-wider ${i < reached ? "" : "text-muted"}`}>{s}</span>
         </li>
@@ -110,8 +110,8 @@ function Details({ deal }: { deal: DealDetail }) {
   ];
   return (
     <dl className="border-b border-line">
-      {rows.map(([k, v]) => (
-        <div key={k} data-reveal className="grid grid-cols-[8rem_1fr] gap-4 border-t border-line py-4 text-sm">
+      {rows.map(([k, v], i) => (
+        <div key={k} data-reveal style={{ "--i": i } as React.CSSProperties} className="grid grid-cols-[8rem_1fr] gap-4 border-t border-line py-4 text-sm">
           <dt className={label}>{k}</dt>
           <dd>{v}</dd>
         </div>

@@ -100,12 +100,12 @@ function CreateForm() {
   return (
     <form onSubmit={submit} className="grid gap-12 lg:grid-cols-[1fr_340px]">
       <fieldset disabled={busy} className="grid gap-8">
-        <label className="grid gap-2" data-reveal>
+        <label className="grid gap-2" data-reveal style={{ "--i": 0 } as React.CSSProperties}>
           <span className={label}>01 · Freelancer wallet</span>
           <input name="freelancer" className={`${field} font-mono`} placeholder="0x…" autoComplete="off" spellCheck={false} required />
         </label>
         <div className="grid gap-8 sm:grid-cols-2">
-          <label className="grid gap-2" data-reveal>
+          <label className="grid gap-2" data-reveal style={{ "--i": 1 } as React.CSSProperties}>
             <span className={label}>02 · Amount (USDC)</span>
             <input
               name="amount"
@@ -117,12 +117,12 @@ function CreateForm() {
               required
             />
           </label>
-          <label className="grid gap-2" data-reveal>
+          <label className="grid gap-2" data-reveal style={{ "--i": 2 } as React.CSSProperties}>
             <span className={label}>03 · Deadline</span>
             <input name="deadline" type="date" min={tomorrow} className={field} value={date} onChange={(e) => setDate(e.target.value)} required />
           </label>
         </div>
-        <label className="grid gap-2" data-reveal>
+        <label className="grid gap-2" data-reveal style={{ "--i": 3 } as React.CSSProperties}>
           <span className={label}>04 · Brief</span>
           <textarea
             name="terms"

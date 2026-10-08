@@ -49,11 +49,11 @@ function DealList() {
         <span>Status</span>
         <span />
       </li>
-      {data.map((d) => {
+      {data.map((d, i) => {
         const role = d.client === address ? "Client" : "Freelancer";
         const other = role === "Client" ? d.freelancer : d.client;
         return (
-          <li key={d.id.toString()} data-reveal>
+          <li key={d.id.toString()} data-reveal style={{ "--i": i } as React.CSSProperties}>
             <Link
               href={`/app/deal/${d.id}`}
               className="group grid grid-cols-[3rem_1fr_auto] items-center gap-x-4 gap-y-1 border-t border-line py-5 transition-colors hover:text-red sm:grid-cols-[3rem_1fr_7rem_8rem_8rem_1.5rem]"
