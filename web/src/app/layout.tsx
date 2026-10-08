@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Suspense } from "react";
 import { Pet } from "@/components/pet";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -17,9 +18,13 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TrustPay — USDC Escrow on Arc",
-  description:
-    "Lock USDC in escrow on Arc. An AI agent verifies the work and releases payment. No trust needed.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "TrustPay — USDC Escrow on Arc", template: "%s · TrustPay" },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", siteName: SITE_NAME, url: "/" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

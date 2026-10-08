@@ -1,7 +1,6 @@
 "use client";
 
-import { createViemAdapterFromProvider } from "@circle-fin/adapter-viem-v2";
-import { AppKit } from "@circle-fin/app-kit";
+import type { AppKit } from "@circle-fin/app-kit";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, ArrowUpRight, Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -14,8 +13,11 @@ import { USDC, errorText, usd, usdcAbi } from "@/lib/escrow";
 import { Wallet, btn, btnGhost, field, label } from "../ui";
 
 // One App Kit for swap + bridge. Keyless: a kit key must never reach the browser.
-let kit: AppKit | undefined;
-const getKit = () => (kit ??= new AppKit());
+// App Kit + adapter are heavy, so they load on first use (first quote/bridge), not with the page.
+let kit: Promise<AppKit> | undefined;
+const getKit = () => (kit ??= import("@circle-fin/app-kit").then(({ AppKit }) => new AppKit()));
+const makeAdapter = async (provider: EIP1193Provider) =>
+  (await import("@circle-fin/adapter-viem-v2")).createViemAdapterFromProvider({ provider });
 
 const tokenAddress = (net: Network, t: SwapToken) => (t === "USDC" ? USDC : net.eurc);
 
@@ -81,7 +83,7 @@ function useAdapter() {
     if (!connector) throw new Error("Wallet not connected");
     if (current !== chainId) await switchChain.mutateAsync({ chainId });
     const provider = (await connector.getProvider()) as EIP1193Provider;
-    return createViemAdapterFromProvider({ provider });
+    return makeAdapter(provider);
   };
 }
 
@@ -150,7 +152,7 @@ function SwapPanel() {
   const onArc = chainId === chain.id;
   const typed = useDebounced(amount, 400);
 
-  const adapter = async () => createViemAdapterFromProvider({ provider: (await connector!.getProvider()) as EIP1193Provider });
+  const adapter = async () => makeAdapter((await connector!.getProvider()) as EIP1193Provider);
   const request = (amountIn: string) => ({ tokenIn, tokenOut, amountIn, config: { slippageBps: 100 } });
 
   // live quote: refetches as you type (debounced) and every 15s while visible
@@ -159,7 +161,7 @@ function SwapPanel() {
     enabled: isAmount(typed) && onArc && !!connector,
     refetchInterval: 15_000,
     retry: 1,
-    queryFn: async () => getKit().estimateSwap({ from: { adapter: await adapter(), chain: net.kit }, ...request(typed) }),
+    queryFn: async () => (await getKit()).estimateSwap({ from: { adapter: await adapter(), chain: net.kit }, ...request(typed) }),
   });
 
   const balance = balanceIn.data;
@@ -172,7 +174,7 @@ function SwapPanel() {
     setError("");
     setDone(null);
     try {
-      const result = await getKit().swap({ from: { adapter: await adapter(), chain: net.kit }, ...request(amount) });
+      const result = await (await getKit()).swap({ from: { adapter: await adapter(), chain: net.kit }, ...request(amount) });
       setDone({ out: result.amountOut ?? current?.estimatedOutput.amount ?? "", token: tokenOut, url: result.explorerUrl });
       setAmount("");
       await qc.invalidateQueries();
@@ -332,7 +334,7 @@ function BridgePanel() {
     setBusy("estimate");
     try {
       const adapter = await getAdapter(source.viem.id);
-      setEstimate({ value: await getKit().estimateBridge(params(adapter)), key });
+      setEstimate({ value: await (await getKit()).estimateBridge(params(adapter)), key });
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -350,7 +352,7 @@ function BridgePanel() {
   async function run(retry: boolean) {
     setBusy("bridge");
     setError("");
-    const k = getKit();
+    const k = await getKit();
     k.on("*", onEvent);
     try {
       const adapter = await getAdapter(source.viem.id);

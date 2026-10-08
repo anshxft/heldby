@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Providers } from "./providers";
 import { LogoMark } from "@/components/logo";
 import { NetworkNote, NetworkSwitch, Wallet } from "./ui";
+
+export const metadata: Metadata = {
+  // root template suffixes "Your escrows"; this template re-applies it for /app child pages
+  title: { default: "Your escrows", template: "%s · TrustPay" },
+  description: "See every USDC escrow where you are the client or the freelancer, with live status on Arc.",
+  alternates: { canonical: "/app" },
+};
 
 export default function AppLayout({ children }: LayoutProps<"/app">) {
   return (

@@ -1,6 +1,21 @@
 import { ArrowDown, ArrowRight, ArrowUpRight, Zap } from "lucide-react";
+import Link from "next/link";
 import { Motion } from "@/components/motion";
 import { LogoMark } from "@/components/logo";
+import { REPO_URL, SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
+
+// structured data: tells search engines this is a free web app (rich results)
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "TrustPay",
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  codeRepository: REPO_URL,
+};
 
 const heroLines = [
   { text: "Money held", indent: "ml-[12%]", speed: -0.08 },
@@ -48,6 +63,7 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-2 p-2 sm:gap-3 sm:p-3">
       <Motion />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* 01 — Hero */}
       <section className="relative flex min-h-[calc(100svh-16px)] flex-col overflow-hidden rounded-[22px] bg-paper px-5 py-5 sm:min-h-[calc(100svh-24px)] sm:rounded-[28px] sm:px-8 sm:py-7">
@@ -223,8 +239,13 @@ export default function Home() {
           </a>
         </div>
         <footer className="flex flex-wrap justify-between gap-2 border-t border-red-ink/20 pt-4 text-[11px]">
-          <span>TrustPay © 2026</span>
-          <span>Built for the Arc Hackathon</span>
+          <span>TrustPay © 2026 · Built for Arc Microgrants</span>
+          <nav aria-label="Footer" className="flex flex-wrap gap-4">
+            <Link href="/app" className="link">Escrows</Link>
+            <Link href="/app/new" className="link">New escrow</Link>
+            <Link href="/app/wallet" className="link">Swap &amp; bridge</Link>
+            <a href={REPO_URL} target="_blank" rel="noreferrer" className="link">GitHub ↗</a>
+          </nav>
         </footer>
       </section>
     </div>

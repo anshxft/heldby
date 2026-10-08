@@ -1,0 +1,23 @@
+# TrustPay
+
+> USDC escrow on Arc (Circle's stablecoin L1, where gas is paid in USDC). A client locks USDC for a freelancer; the client releases it, or an AI agent checks the delivery against the written brief and settles it on-chain.
+
+## How it works
+- Create: the client sets the freelancer's wallet, an amount in USDC, a deadline and a brief, then locks the funds (`createDeal`).
+- Deliver: the freelancer submits a link to the work (`submitWork`).
+- Settle: the client releases payment (`release`), or either side raises a dispute and the AI agent splits the funds (`resolve`). After 24h without a client response the freelancer can also ask the agent.
+- Safety nets: no delivery by the deadline means a full refund to the client (`refund`). The agent can only pay the client or the freelancer, never anyone else.
+
+## Pages
+- [Home](/): what TrustPay is and how it works
+- [Your escrows](/app): deals where the connected wallet is client or freelancer
+- [New escrow](/app/new): lock USDC for a freelancer
+- [Wallet](/app/wallet): swap USDC/EURC on Arc and bridge USDC to Arc via Circle CCTP
+
+## Tech
+- Smart contract: Solidity, Foundry, OpenZeppelin (`TrustPayEscrow.sol`)
+- Web: Next.js, wagmi/viem, Circle App Kit
+- AI: open-source `openai/gpt-oss-120b` on Groq
+
+## Source
+- [GitHub repository](https://github.com/anshxft/trustpay)
