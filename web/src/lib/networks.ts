@@ -57,7 +57,7 @@ export const NETWORKS: Record<NetworkId, Network> = {
     label: "Mainnet",
     testnet: false,
     chain: arc,
-    escrow: null, // set after `forge script ... --rpc-url arc` deploys it
+    escrow: "0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8", // deployed 2026-10-09, block 25099861
     eurc: "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1",
     kit: "Arc",
     bridgeSources: [

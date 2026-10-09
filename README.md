@@ -45,7 +45,7 @@ as untrusted data; malformed or uncertain verdicts never move funds.
 | Network | Escrow contract |
 |---|---|
 | Arc Testnet (5042002) | `0xB5a9223B73721b7835a1EFd571B5C01b23e834B3` |
-| Arc Mainnet (5042) | _coming soon_ |
+| Arc Mainnet (5042) | [`0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8`](https://explorer.arc.io/address/0x1Ff5f68f159Ef3Ede6f4d05D58A20D700fbb4BE8) |
 
 ## Run locally
 ```bash
