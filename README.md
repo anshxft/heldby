@@ -58,4 +58,8 @@ cp ../.env.example .env.local   # then fill GROQ_API_KEY and ARBITER_PRIVATE_KEY
 npm run dev
 ```
 
+## Team
+- [@anshxft](https://github.com/anshxft) — creator: smart contract, web app, AI agent
+- [@Snatcher27](https://github.com/Snatcher27) — team member
+
 Built for [Arc Microgrants](https://dorahacks.io/hackathon/arc-microgrants/detail).
