@@ -14,6 +14,8 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 // viewport without the scrollbar (innerWidth includes it)
 const vw = () => document.documentElement.clientWidth;
 const vh = () => document.documentElement.clientHeight;
+// on phones inside the app a nav bar is pinned to the bottom, so Pip's home corner sits above it
+const homeY = () => vh() - SIZE - (vw() < 640 && location.pathname.startsWith("/app") ? 92 : 20);
 
 /**
  * Pip: a red mascot that wanders the landing page, watches the cursor, can be dragged and thrown
@@ -49,7 +51,7 @@ export function Pet() {
   useEffect(() => {
     const enteringApp = pathname.startsWith("/app") && !pathRef.current.startsWith("/app");
     pathRef.current = pathname;
-    if (enteringApp) moveTo.current(vw() - SIZE - 20, vh() - SIZE - 20);
+    if (enteringApp) moveTo.current(vw() - SIZE - 20, homeY());
   }, [pathname]);
 
   // body language that goes with a new face
@@ -68,7 +70,7 @@ export function Pet() {
     const svgEl = svg.current!;
     const bodyEl = body.current!;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const corner = () => ({ x: vw() - SIZE - 20, y: vh() - SIZE - 20 });
+    const corner = () => ({ x: vw() - SIZE - 20, y: homeY() });
     const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max);
     utils.set(el, corner());
 
@@ -299,7 +301,7 @@ export function Pet() {
     setHint(false);
     const next = !open;
     setOpen(next);
-    if (next) moveTo.current(vw() - SIZE - 20, vh() - SIZE - 20);
+    if (next) moveTo.current(vw() - SIZE - 20, homeY());
   }
 
   return (
@@ -492,7 +494,8 @@ function Chat({ page, onClose, onThinking, onMood }: { page: string; onClose: ()
     <div
       role="dialog"
       aria-label="Chat with Pip"
-      className="fixed bottom-[112px] right-4 z-50 flex h-[min(480px,calc(100svh-140px))] w-[min(360px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl bg-paper text-ink shadow-[0_30px_80px_-20px_rgb(0_0_0/0.45)] ring-1 ring-ink/10"
+      style={{ bottom: vh() - homeY() + 16 }}
+      className="fixed right-4 z-50 flex h-[min(480px,calc(100svh-140px))] w-[min(360px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl bg-paper text-ink shadow-[0_30px_80px_-20px_rgb(0_0_0/0.45)] ring-1 ring-ink/10"
     >
       <header className="flex items-center justify-between border-b border-line px-5 py-4">
         <p className="flex items-center gap-2 text-sm font-semibold tracking-tight">

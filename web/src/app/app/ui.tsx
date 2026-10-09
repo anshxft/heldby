@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, LogOut, Repeat } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight, ChevronDown, LayoutList, LogOut, Plus, Repeat, WalletMinimal } from "lucide-react";
 import { animate } from "animejs";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useConnect, useConnection, useConnectors, useDisconnect, useReadContract, useSwitchChain } from "wagmi";
@@ -53,34 +54,46 @@ export function Wallet() {
   const named = connectors.filter((c) => c.id !== "injected");
   const choices = (named.length ? named : connectors).toSorted((a, b) => Number(b.id === "io.metamask") - Number(a.id === "io.metamask"));
 
+  const pick = async (c: (typeof choices)[number], e?: React.MouseEvent) => {
+    e?.currentTarget.closest("details")?.removeAttribute("open");
+    setError("");
+    try {
+      // always show the wallet's account picker, even if this site was approved before
+      const p = (await c.getProvider()) as Provider;
+      await p.request({ method: "wallet_requestPermissions", params: perms });
+    } catch (err) {
+      if ((err as { code?: number }).code === 4001) return; // user closed the picker
+    }
+    connect.mutate({ connector: c }, { onError: (err) => setError(errorText(err)) });
+  };
+  const connectLabel = connect.isPending ? "Connecting…" : <><span className="sm:hidden">Connect</span><span className="hidden sm:inline">Connect wallet</span></>;
+
   if (!isConnected)
     return (
-      <div className="flex flex-col items-end gap-1">
-        <div className="flex flex-wrap justify-end gap-2">
-          {choices.map((c) => (
-            <button
-              key={c.uid}
-              className={btn}
-              disabled={connect.isPending}
-              onClick={async () => {
-                setError("");
-                try {
-                  // always show the wallet's account picker, even if this site was approved before
-                  const p = (await c.getProvider()) as Provider;
-                  await p.request({ method: "wallet_requestPermissions", params: perms });
-                } catch (e) {
-                  if ((e as { code?: number }).code === 4001) return; // user closed the picker
-                }
-                connect.mutate({ connector: c }, { onError: (e) => setError(errorText(e)) });
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- wallet icons are tiny data: URIs */}
-              {c.icon && <img src={c.icon} alt="" className="size-5" />}
-              {connect.isPending ? "Connecting…" : choices.length > 1 ? c.name : "Connect wallet"}
-            </button>
-          ))}
-        </div>
-        {error && <p className="text-xs text-red">{error}</p>}
+      <div className="relative flex flex-col items-end gap-1">
+        {choices.length <= 1 ? (
+          <button className={btn} disabled={connect.isPending || !choices[0]} onClick={() => choices[0] && pick(choices[0])}>
+            {connectLabel}
+          </button>
+        ) : (
+          // several wallet extensions installed: one button, pick from a list (fits a phone header)
+          <details className="group relative">
+            <summary className={`${btn} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+              {connectLabel}
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-60 rounded-2xl border border-line bg-paper-2 p-2 text-sm shadow-xl">
+              {choices.map((c) => (
+                <button key={c.uid} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-paper" disabled={connect.isPending} onClick={(e) => pick(c, e)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- wallet icons are tiny data: URIs */}
+                  {c.icon ? <img src={c.icon} alt="" className="size-6" /> : <span className="size-6 rounded-full bg-line" />}
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
+        {error && <p className="absolute top-full mt-1 max-w-60 text-right text-xs text-red">{error}</p>}
       </div>
     );
 
@@ -97,8 +110,8 @@ export function Wallet() {
   return (
     <details className="group relative">
       <summary className={`${btnGhost} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
-        <span className="font-mono"><CountUp value={balance.data} /> USDC</span>
-        <span className="h-4 w-px bg-line" />
+        <span className="hidden font-mono sm:inline"><CountUp value={balance.data} /> USDC</span>
+        <span className="hidden h-4 w-px bg-line sm:block" />
         <span className="font-mono text-muted">{short(address!)}</span>
         <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
       </summary>
@@ -209,7 +222,7 @@ export function NetworkSwitch() {
           role="radio"
           aria-checked={net.id === id}
           onClick={() => pick(id)}
-          className={`flex h-8 items-center gap-1.5 rounded-full px-3 transition ${net.id === id ? (id === "mainnet" ? "bg-red text-red-ink" : "bg-ink text-paper") : "text-muted hover:text-ink"}`}
+          className={`flex h-8 items-center gap-1.5 rounded-full px-2.5 transition sm:px-3 ${net.id === id ? (id === "mainnet" ? "bg-red text-red-ink" : "bg-ink text-paper") : "text-muted hover:text-ink"}`}
         >
           <span className={`size-1.5 rounded-full ${id === "mainnet" ? "bg-current" : "border border-current"}`} aria-hidden />
           {NETWORKS[id].label}
@@ -260,4 +273,57 @@ export function CountUp({ value }: { value: bigint | undefined }) {
     return () => void a.pause();
   }, [value]);
   return <span ref={ref} />;
+}
+
+/** Phone navigation: the header has no room for links, so they live in a bar pinned to the bottom. */
+export function MobileNav() {
+  const path = usePathname();
+  const items = [
+    { href: "/app", label: "Escrows", Icon: LayoutList, on: path === "/app" || path.startsWith("/app/deal") },
+    { href: "/app/new", label: "New escrow", Icon: Plus, on: path === "/app/new" },
+    { href: "/app/wallet", label: "Wallet", Icon: WalletMinimal, on: path === "/app/wallet" },
+  ];
+  return (
+    <nav aria-label="App" className="fixed inset-x-2 bottom-2 z-40 grid grid-cols-3 rounded-[22px] bg-ink p-1.5 text-paper shadow-2xl sm:hidden">
+      {items.map(({ href, label: text, Icon, on }) => (
+        <Link
+          key={href}
+          href={href}
+          aria-current={on ? "page" : undefined}
+          className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-[11px] font-medium transition ${on ? "bg-red text-red-ink" : "text-paper/70 active:bg-paper/10"}`}
+        >
+          <Icon className="size-5" aria-hidden />
+          {text}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/** Grey placeholder blocks shaped like the content that is loading. */
+export function Skeleton({ rows = 3, kind = "list" }: { rows?: number; kind?: "list" | "deal" }) {
+  const bar = "rounded-md bg-ink/[0.07] animate-pulse";
+  if (kind === "deal")
+    return (
+      <div role="status" aria-label="Loading escrow" className="grid gap-6">
+        <div className={`${bar} h-4 w-40`} />
+        <div className={`${bar} h-12 w-3/4`} />
+        <div className="grid grid-cols-4 gap-1">{[0, 1, 2, 3].map((i) => <div key={i} className={`${bar} h-1`} />)}</div>
+        <div className="grid gap-3 lg:w-2/3">{[0, 1, 2, 3].map((i) => <div key={i} className={`${bar} h-10`} />)}</div>
+      </div>
+    );
+  return (
+    <ul role="status" aria-label="Loading escrows" className="border-b border-line">
+      {Array.from({ length: rows }, (_, i) => (
+        <li key={i} className="grid grid-cols-[3rem_1fr_6rem] items-center gap-4 border-t border-line py-5">
+          <div className={`${bar} h-3 w-6`} />
+          <div className="grid gap-2">
+            <div className={`${bar} h-5 w-2/3`} />
+            <div className={`${bar} h-3 w-32`} />
+          </div>
+          <div className={`${bar} h-7 w-20 justify-self-end rounded-full`} />
+        </li>
+      ))}
+    </ul>
+  );
 }

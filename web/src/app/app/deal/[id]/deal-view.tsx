@@ -11,21 +11,29 @@ import { REVIEW_WINDOW_SECONDS, errorText, escrowAbi, short, usd } from "@/lib/e
 import { explorer, isNetworkId } from "@/lib/networks";
 import { setNetwork, useNetwork } from "../../network";
 import { type DealDetail, useDeal } from "../../data";
-import { NotDeployed, StatusPill, TxLink, btn, btnGhost, field, label, useNow } from "../../ui";
+import { NotDeployed, Skeleton, StatusPill, TxLink, btn, btnGhost, field, label, useNow } from "../../ui";
 
 export function DealView({ id }: { id: string }) {
   const net = useNetwork();
   const { data: deal, isPending, error } = useDeal(BigInt(id));
+  const [created, setCreated] = useState(false);
 
-  // shared links carry ?net=mainnet|testnet so the recipient lands on the right network
+  // shared links carry ?net=mainnet|testnet so the recipient lands on the right network;
+  // ?created=1 comes from the New escrow form and is dropped from the URL so the link stays clean to share
   useEffect(() => {
-    const wanted = new URLSearchParams(location.search).get("net");
+    const q = new URLSearchParams(location.search);
+    const wanted = q.get("net");
     if (isNetworkId(wanted)) setNetwork(wanted);
+    if (q.has("created")) {
+      setCreated(true); // eslint-disable-line react-hooks/set-state-in-effect -- reading the URL once on mount
+      q.delete("created");
+      history.replaceState(null, "", location.pathname + (q.size ? `?${q}` : ""));
+    }
   }, []);
 
   if (!net.escrow) return <NotDeployed />;
 
-  if (isPending) return <p className="text-muted">Loading escrow…</p>;
+  if (isPending) return <Skeleton kind="deal" />;
   if (error) return <p className="text-red">Couldn’t load escrow: {error.message}</p>;
   if (!deal) return <p className="text-lg">Escrow #{id} doesn’t exist.</p>;
 
@@ -34,6 +42,16 @@ export function DealView({ id }: { id: string }) {
       <Link href="/app" className="link inline-flex items-center gap-1 text-sm font-medium">
         <ArrowLeft className="size-4" aria-hidden /> All escrows
       </Link>
+
+      {created && (
+        <div role="status" data-reveal="card" className="mt-6 flex items-start gap-3 border-l-4 border-red bg-red/5 p-4 text-sm">
+          <Check className="mt-0.5 size-4 shrink-0 text-red" aria-hidden />
+          <p>
+            <span className="font-medium">Escrow created — {usd(deal.amount)} USDC is locked on Arc.</span> Next, send this page to your freelancer
+            (use “Copy link”) so they can submit the work.
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex flex-wrap items-center gap-3" data-reveal>
         <span className={label}>Escrow #{id.padStart(2, "0")}</span>

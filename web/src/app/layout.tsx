@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { Pet } from "@/components/pet";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -48,6 +49,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <Pet />
         </Suspense>
+        {/* cookieless page-view counts; only reports once Analytics is enabled in the Vercel project */}
+        <Analytics />
       </body>
     </html>
   );

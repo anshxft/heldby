@@ -142,3 +142,12 @@ body {
 @keyframes rv-pop {
   from { opacity: 0; scale: 0.6; }
 }
+
+/* Privacy / Terms prose */
+.legal h1 { @apply mt-3 text-[clamp(48px,9vw,112px)] font-medium leading-[0.95] tracking-[-0.05em]; }
+.legal h2 { @apply mt-10 text-xl font-medium tracking-tight; }
+.legal p, .legal ul { @apply mt-3 leading-relaxed text-muted; }
+.legal h1 + p { @apply mt-8 text-lg text-ink; }
+.legal ul { @apply list-disc pl-5; }
+.legal strong { @apply font-medium text-ink; }
+.legal a { @apply text-ink underline underline-offset-3 hover:text-red; }

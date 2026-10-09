@@ -5,7 +5,7 @@ import { ArrowUpRight, Plus } from "lucide-react";
 import { useConnection } from "wagmi";
 import { short, usd } from "@/lib/escrow";
 import { useMyDeals } from "./data";
-import { NeedsWallet, StatusPill, Title, btn, label } from "./ui";
+import { NeedsWallet, Skeleton, StatusPill, Title, btn, label } from "./ui";
 
 export default function Dashboard() {
   return (
@@ -29,7 +29,7 @@ function DealList() {
   const { address } = useConnection();
   const { data, isPending, error } = useMyDeals();
 
-  if (isPending) return <p className="text-muted">Loading escrows…</p>;
+  if (isPending) return <Skeleton />;
   if (error) return <p className="text-red">Couldn’t load escrows: {error.message}</p>;
   if (!data.length)
     return (

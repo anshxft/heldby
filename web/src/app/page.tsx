@@ -2,7 +2,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Zap } from "lucide-react";
 import Link from "next/link";
 import { Motion } from "@/components/motion";
 import { LogoMark } from "@/components/logo";
-import { REPO_URL, SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
+import { CONTACT_URL, REPO_URL, SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 
 // structured data: tells search engines this is a free web app (rich results)
 const jsonLd = {
@@ -63,6 +63,13 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-2 p-2 sm:gap-3 sm:p-3">
       <Motion />
+      {/* phones: the hero's "Create escrow" button is hidden, so keep one way in pinned to the bottom (Pip has the right corner) */}
+      <Link
+        href="/app"
+        className="fixed bottom-5 left-4 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper shadow-2xl transition active:scale-[0.97] sm:hidden"
+      >
+        Launch app <ArrowRight className="size-4" aria-hidden />
+      </Link>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* 01 — Hero */}
@@ -245,6 +252,9 @@ export default function Home() {
             <Link href="/app/new" className="link">New escrow</Link>
             <Link href="/app/wallet" className="link">Swap &amp; bridge</Link>
             <a href={REPO_URL} target="_blank" rel="noreferrer" className="link">GitHub ↗</a>
+            <Link href="/privacy" className="link">Privacy</Link>
+            <Link href="/terms" className="link">Terms</Link>
+            <a href={CONTACT_URL} target="_blank" rel="noreferrer" className="link">Contact ↗</a>
           </nav>
         </footer>
       </section>
